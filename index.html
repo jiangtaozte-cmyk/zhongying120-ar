@@ -7,6 +7,8 @@
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; overflow: hidden; background: #000; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+    /* 兜底：MindAR 用 .hidden 类切换 loading/scanning 可见性（自带 CSS 仅在 uiLoading:'yes' 时注入） */
+    .hidden { display: none !important; }
     #loading {
       position: fixed; inset: 0; display: flex; flex-direction: column;
       align-items: center; justify-content: center; color: #f5e6c8;
@@ -192,8 +194,24 @@
     var scene = document.getElementById('ar-scene');
     scene.addEventListener('loaded', function() { __log('场景 loaded', 'ok'); });
     scene.addEventListener('renderstart', function() { __log('渲染启动', 'ok'); });
-    scene.addEventListener('arReady', function() { __log('AR就绪 arReady', 'ok'); });
-    scene.addEventListener('arError', function(e) { __log('AR错误: ' + (e.detail && e.detail.error), 'fail'); });
+    scene.addEventListener('arReady', function() {
+      __log('AR就绪 arReady', 'ok');
+      // MindAR 靠 classList.add('hidden') 隐藏遮罩，但本项目 CSS 无 .hidden 规则，
+      // 导致 #loading 一直盖住摄像头画面 —— 这里手动隐藏
+      var ld = document.getElementById('loading');
+      if (ld) ld.style.display = 'none';
+      var sc = document.getElementById('scanning');
+      if (sc) sc.style.display = 'block';
+    });
+    scene.addEventListener('arError', function(e) {
+      var err = (e.detail && e.detail.error) || '';
+      __log('AR错误: ' + err, 'fail');
+      var ld = document.getElementById('loading');
+      if (ld) ld.innerHTML = '<h1 style="color:#ff9999">摄像头无法启动</h1>'
+        + '<p>' + err + '</p>'
+        + '<p style="font-size:11px;margin-top:10px">请确认：1) 页面为 HTTPS 或 localhost；'
+        + '2) 已授予相机权限；3) 浏览器支持 WebGL</p>';
+    });
     scene.addEventListener('targetFound', function() {
       __log('>>> 识别成功', 'ok');
       document.getElementById('found').style.display = 'block';
