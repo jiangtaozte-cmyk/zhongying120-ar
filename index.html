@@ -143,23 +143,33 @@
 
   <!-- 动态加载JS，带多CDN备用 -->
   <script>
-    function loadScript(urls, name, verify) {
+    function loadScript(urls, name, verify, useFetch) {
       return new Promise(function(resolve, reject) {
         var i = 0;
         function tryNext() {
           if (i >= urls.length) { reject(new Error(name + ' all CDN failed')); return; }
-          var s = document.createElement('script');
-          s.src = urls[i];
-          s.onload = function() {
-            if (verify && !verify()) {
-              __log(name + ' 加载但未定义 (' + urls[i].split('/')[2] + ')，换下一个', 'warn');
-              i++; tryNext();
-            } else {
-              __log(name + ' 加载成功 (' + urls[i].split('/')[2] + ')', 'ok'); resolve();
-            }
-          };
-          s.onerror = function() { __log(name + ' 失败: ' + urls[i].split('/')[2], 'warn'); i++; tryNext(); };
-          document.head.appendChild(s);
+          var url = urls[i];
+          if (useFetch) {
+            // fetch方式：下载代码后手动eval，避免UMD走CommonJS分支
+            fetch(url).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }).then(function(code) {
+              // 清除可能干扰UMD的全局变量
+              var _m = window.module, _e = window.exports, _d = window.define;
+              delete window.module; delete window.exports; delete window.define;
+              try { (0, eval)(code); } catch(err) { __log(name+' 执行错误: '+err.message, 'fail'); }
+              if (_m) window.module = _m; if (_e) window.exports = _e; if (_d) window.define = _d;
+              if (verify && !verify()) { __log(name+' fetch后未定义 ('+url.split('/')[2]+')，换下一个', 'warn'); i++; tryNext(); }
+              else { __log(name+' 加载成功 ('+url.split('/')[2]+')', 'ok'); resolve(); }
+            }).catch(function() { __log(name+' fetch失败: '+url.split('/')[2], 'warn'); i++; tryNext(); });
+          } else {
+            var s = document.createElement('script');
+            s.src = url;
+            s.onload = function() {
+              if (verify && !verify()) { __log(name+' 加载但未定义 ('+url.split('/')[2]+')，换下一个', 'warn'); i++; tryNext(); }
+              else { __log(name+' 加载成功 ('+url.split('/')[2]+')', 'ok'); resolve(); }
+            };
+            s.onerror = function() { __log(name+' 失败: '+url.split('/')[2], 'warn'); i++; tryNext(); };
+            document.head.appendChild(s);
+          }
         }
         tryNext();
       });
@@ -170,9 +180,8 @@
     ], 'MINDAR', function(){ return typeof window.MINDAR !== 'undefined'; }).then(function() {
       return loadScript([
         'https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-v1.4.2.min.js',
-        'https://unpkg.com/aframe@1.4.2/dist/aframe-v1.4.2.min.js',
-        'https://aframe.io/releases/1.4.2/aframe.min.js'
-      ], 'AFRAME', function(){ return typeof AFRAME !== 'undefined'; });
+        'https://unpkg.com/aframe@1.4.2/dist/aframe-v1.4.2.min.js'
+      ], 'AFRAME', function(){ return typeof AFRAME !== 'undefined'; }, true);
     }).then(function() {
       return loadScript([
         'https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-aframe.prod.js',
