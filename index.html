@@ -7,7 +7,6 @@
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; overflow: hidden; background: #000; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
-
     #loading {
       position: fixed; inset: 0; display: flex; flex-direction: column;
       align-items: center; justify-content: center; color: #f5e6c8;
@@ -21,41 +20,36 @@
       animation: spin 1s linear infinite; margin: 14px 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
     #debug {
       position: fixed; bottom: 10px; left: 10px; right: 10px;
-      background: rgba(0,0,0,0.85); color: #0f0; font-family: monospace;
+      background: rgba(0,0,0,0.88); color: #0f0; font-family: monospace;
       font-size: 11px; padding: 10px; border-radius: 8px; z-index: 9999;
-      max-height: 40vh; overflow-y: auto; display: none;
+      max-height: 45vh; overflow-y: auto; display: none;
     }
+    #debug div { margin: 2px 0; }
     #debug .ok { color: #0f0; }
     #debug .fail { color: #f66; }
-    #debug .pending { color: #ff0; }
-
+    #debug .warn { color: #ff0; }
     #show-debug {
       position: fixed; top: 10px; right: 10px; z-index: 10000;
       background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3);
       padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
     }
-
     #scanning {
       position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
       color: #fff; background: rgba(139,26,26,0.85); padding: 12px 24px;
       border-radius: 24px; font-size: 14px; z-index: 10; pointer-events: none;
-      display: none; animation: pulse 2s ease-in-out infinite;
+      display: none;
     }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
-
     #found {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
       color: #f5e6c8; background: rgba(44,95,63,0.9); padding: 8px 20px;
       border-radius: 16px; font-size: 13px; z-index: 10; display: none;
     }
-
     #info-panel {
       position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
       width: 88%; max-width: 360px; background: rgba(255,255,255,0.97);
-      border-radius: 14px; padding: 18px; z-index: 30; display: none;
+      borderRadius: 14px; padding: 18px; z-index: 30; display: none;
       box-shadow: 0 8px 32px rgba(0,0,0,0.35);
     }
     #info-panel h2 { margin: 0 0 10px; font-size: 17px; color: #8b1a1a; }
@@ -66,36 +60,34 @@
     }
   </style>
 
-  <!-- 超时检测放在最顶部，确保一定执行 -->
+  <!-- 最顶部：超时检测 + 日志工具 -->
   <script>
-    var __startTime = Date.now();
-    var __loadStatus = { mindar: 'pending', aframe: 'pending', aframePlugin: 'pending', scene: 'pending', camera: 'pending' };
-
+    var __t0 = Date.now();
     function __log(msg, cls) {
       var dbg = document.getElementById('debug');
       if (dbg) {
-        var line = document.createElement('div');
-        line.className = cls || '';
-        line.textContent = '[' + ((Date.now()-__startTime)/1000).toFixed(1) + 's] ' + msg;
-        dbg.appendChild(line);
+        var d = document.createElement('div');
+        d.className = cls || '';
+        d.textContent = '[' + ((Date.now()-__t0)/1000).toFixed(1) + 's] ' + msg;
+        dbg.appendChild(d);
+        dbg.scrollTop = dbg.scrollHeight;
       }
-      console.log(msg);
+      console.log('[AR] ' + msg);
     }
-
-    // 20秒超时
     setTimeout(function() {
-      var allOk = __loadStatus.mindar === 'ok' && __loadStatus.aframe === 'ok' && __loadStatus.aframePlugin === 'ok';
-      if (!allOk || !document.querySelector('a-scene') || !document.querySelector('a-scene').hasLoaded) {
-        document.getElementById('loading').innerHTML =
-          '<h1 style="color:#ff9999">加载失败</h1>' +
-          '<p>文件加载状态：</p>' +
-          '<p>mindar: ' + __loadStatus.mindar + '</p>' +
-          '<p>aframe: ' + __loadStatus.aframe + '</p>' +
-          '<p>aframe插件: ' + __loadStatus.aframePlugin + '</p>' +
-          '<p style="margin-top:12px;font-size:11px;opacity:0.6">请确认4个JS文件都已上传到GitHub同一目录<br>并清除浏览器缓存后重试</p>';
+      var ld = document.getElementById('loading');
+      if (ld && ld.style.display !== 'none') {
+        ld.innerHTML = '<h1 style="color:#ff9999">启动超时</h1>' +
+          '<p>请点右上角"显示日志"并截图</p>';
         document.getElementById('debug').style.display = 'block';
       }
-    }, 20000);
+    }, 25000);
+    window.addEventListener('DOMContentLoaded', function() {
+      fetch('./targets.mind').then(function(r) {
+        if (r.ok) __log('targets.mind 可访问 (' + Math.round(r.headers.get('content-length')/1024) + 'KB)', 'ok');
+        else __log('targets.mind HTTP ' + r.status, 'fail');
+      }).catch(function(e) { __log('targets.mind 失败: ' + e.message, 'fail'); });
+    });
   </script>
 </head>
 <body>
@@ -107,7 +99,7 @@
     <h1>钟阜育英才</h1>
     <p>南京市钟英中学 · 百廿校庆 AR</p>
     <div class="spinner"></div>
-    <p id="load-text">正在加载…</p>
+    <p>正在加载…</p>
   </div>
 
   <div id="scanning">📷 将镜头对准校庆海报</div>
@@ -119,177 +111,93 @@
     <p id="panel-content"></p>
   </div>
 
-  <!-- 动态加载JS，每个都有状态检测 -->
-  <script>
-    function loadScript(src, name) {
-      return new Promise(function(resolve, reject) {
-        var s = document.createElement('script');
-        s.src = src;
-        s.onload = function() { __loadStatus[name] = 'ok'; __log(name + ' 加载成功', 'ok'); resolve(); };
-        s.onerror = function() { __loadStatus[name] = 'fail'; __log(name + ' 加载失败！', 'fail'); reject(new Error(name + ' failed')); };
-        document.head.appendChild(s);
-      });
+  <!-- 静态 a-scene -->
+  <a-scene
+    id="ar-scene"
+    mindar-image="imageTargetSrc: ./targets.mind; uiLoading: #loading; uiScanning: #scanning;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-entity light="type: ambient; color: #fff5e6; intensity: 0.8"></a-entity>
+      <a-entity light="type: directional; color: #f5c542; intensity: 1.0" position="2 3 2"></a-entity>
+
+      <a-text value="120" color="#f5c542" align="center" width="1.0"
+              position="0 0.32 0.08" rotation="-90 0 0"
+              animation="property: rotation; from: -90 0 0; to: -90 360 0; loop: true; dur: 7000; easing: linear"></a-text>
+      <a-text value="钟英中学 百廿校庆" color="#8b1a1a" align="center" width="1.4"
+              position="0 0.14 0.08" rotation="-90 0 0"></a-text>
+      <a-text value="勤朴诚毅" color="#2c5f3f" align="center" width="0.8"
+              position="0 -0.02 0.08" rotation="-90 0 0"></a-text>
+
+      <a-plane class="clickable" width="0.52" height="0.2" color="#8b1a1a"
+               position="-0.36 -0.22 0.08" rotation="-90 0 0"
+               data-title="校史沿革"
+               data-content="1904年创办，始名承志，后更名钟英，取「钟阜育英才」之意，为南京近代首所私立中学。百廿年来八迁校址，历经抗战西迁，1954年定址秦淮九条巷曾公祠，2014年恢复钟英校名。校训「勤朴诚毅」。">
+        <a-text value="校史沿革" color="#f5e6c8" align="center" width="0.48" position="0 0 0.006"></a-text>
+      </a-plane>
+      <a-plane class="clickable" width="0.52" height="0.2" color="#2c5f3f"
+               position="0.36 -0.22 0.08" rotation="-90 0 0"
+               data-title="杰出校友"
+               data-content="两弹一星元勋任新民、两院院士建筑学家吴良镛、前教育部长刘西尧、著名画家刘宇一、作家叶兆言、演员游本昌……钟阜毓秀，英才辈出。">
+        <a-text value="杰出校友" color="#f5e6c8" align="center" width="0.48" position="0 0 0.006"></a-text>
+      </a-plane>
+      <a-entity id="leaves"></a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script defer src="./mindar-image.prod.js"></script>
+  <script defer src="./aframe.min.js"></script>
+  <script defer src="./mindar-image-aframe.prod.js"></script>
+
+  <script defer>
+    __log('主脚本执行', 'ok');
+    __log('MINDAR: ' + (typeof window.MINDAR !== 'undefined' ? '已加载' : '未加载'), typeof window.MINDAR !== 'undefined' ? 'ok' : 'fail');
+    __log('AFRAME: ' + (typeof AFRAME !== 'undefined' ? '已加载' : '未加载'), typeof AFRAME !== 'undefined' ? 'ok' : 'fail');
+
+    var scene = document.getElementById('ar-scene');
+    scene.addEventListener('loaded', function() { __log('场景 loaded', 'ok'); });
+    scene.addEventListener('renderstart', function() { __log('渲染启动 renderstart', 'ok'); });
+    scene.addEventListener('targetFound', function() {
+      __log('>>> 识别成功 targetFound', 'ok');
+      document.getElementById('found').style.display = 'block';
+      document.getElementById('scanning').style.display = 'none';
+      setTimeout(function(){ document.getElementById('found').style.display = 'none'; }, 3000);
+    });
+    scene.addEventListener('targetLost', function() { __log('目标丢失', 'warn'); document.getElementById('scanning').style.display = 'block'; });
+
+    setTimeout(function() {
+      var c = scene.components['mindar-image'];
+      __log('mindar组件: ' + (c ? '存在' : '不存在'), c ? 'ok' : 'fail');
+      if (c && c.controller) __log('controller: 存在', 'ok');
+    }, 3000);
+
+    // 银杏叶
+    var leaves = document.getElementById('leaves');
+    var colors = ['#f5c542', '#e8a317', '#f0d060', '#d4a017'];
+    for (var i = 0; i < 15; i++) {
+      var leaf = document.createElement('a-plane');
+      var x = (Math.random()-0.5)*1.4, y = 0.5+Math.random()*0.4, z = 0.05+Math.random()*0.1;
+      leaf.setAttribute('width','0.09'); leaf.setAttribute('height','0.09');
+      leaf.setAttribute('position', x+' '+y+' '+z);
+      leaf.setAttribute('rotation', '-90 0 '+(Math.random()*360));
+      leaf.setAttribute('material', 'color:'+colors[i%4]+'; side:double; transparent:true; opacity:0.92');
+      leaf.setAttribute('animation', 'property:position; to:'+(x+(Math.random()-0.5)*0.3)+' -0.45 '+z+'; loop:true; dur:'+(3500+Math.random()*2500)+'; delay:'+(Math.random()*5000)+'; easing:easeInQuad');
+      leaves.appendChild(leaf);
     }
 
-    loadScript('./mindar-image.prod.js', 'mindar')
-      .then(function() { return loadScript('./aframe.min.js', 'aframe'); })
-      .then(function() { return loadScript('./mindar-image-aframe.prod.js', 'aframePlugin'); })
-      .then(function() {
-        __log('所有JS加载完成，初始化AR场景', 'ok');
-        initAR();
-      })
-      .catch(function(err) {
-        __log('加载中断: ' + err.message, 'fail');
-        document.getElementById('loading').innerHTML =
-          '<h1 style="color:#ff9999">文件加载失败</h1>' +
-          '<p>' + err.message + '</p>' +
-          '<p style="margin-top:10px;font-size:11px">请检查该文件是否已上传到GitHub</p>';
-        document.getElementById('debug').style.display = 'block';
-      });
-
-    function initAR() {
-      var scene = document.createElement('a-scene');
-      scene.setAttribute('id', 'ar-scene');
-      scene.setAttribute('mindar-image', 'imageTargetSrc: ./targets.mind; uiLoading: #loading; uiScanning: #scanning;');
-      scene.setAttribute('color-space', 'sRGB');
-      scene.setAttribute('renderer', 'colorManagement: true; physicallyCorrectLights: true');
-      scene.setAttribute('vr-mode-ui', 'enabled: false');
-      scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
-
-      scene.addEventListener('loaded', function() { __loadStatus.scene = 'ok'; __log('场景加载完成', 'ok'); });
-      scene.addEventListener('renderstart', function() { __log('渲染启动，请求摄像头…', 'ok'); });
-      scene.addEventListener('targetFound', function() {
-        document.getElementById('found').style.display = 'block';
-        document.getElementById('scanning').style.display = 'none';
-        setTimeout(function(){ document.getElementById('found').style.display = 'none'; }, 3000);
-      });
-      scene.addEventListener('targetLost', function() {
-        document.getElementById('scanning').style.display = 'block';
-      });
-
-      // 相机
-      var camera = document.createElement('a-camera');
-      camera.setAttribute('position', '0 0 0');
-      camera.setAttribute('look-controls', 'enabled: false');
-      scene.appendChild(camera);
-
-      // 目标实体
-      var target = document.createElement('a-entity');
-      target.setAttribute('mindar-image-target', 'targetIndex: 0');
-
-      // 灯光
-      var light1 = document.createElement('a-entity');
-      light1.setAttribute('light', 'type: ambient; color: #fff5e6; intensity: 0.8');
-      target.appendChild(light1);
-      var light2 = document.createElement('a-entity');
-      light2.setAttribute('light', 'type: directional; color: #f5c542; intensity: 1.0');
-      light2.setAttribute('position', '2 3 2');
-      target.appendChild(light2);
-
-      // 120
-      var t1 = document.createElement('a-text');
-      t1.setAttribute('value', '120');
-      t1.setAttribute('color', '#f5c542');
-      t1.setAttribute('align', 'center');
-      t1.setAttribute('width', '1.0');
-      t1.setAttribute('position', '0 0.32 0.08');
-      t1.setAttribute('rotation', '-90 0 0');
-      t1.setAttribute('animation', 'property: rotation; from: -90 0 0; to: -90 360 0; loop: true; dur: 7000; easing: linear');
-      target.appendChild(t1);
-
-      // 副标题
-      var t2 = document.createElement('a-text');
-      t2.setAttribute('value', '钟英中学 百廿校庆');
-      t2.setAttribute('color', '#8b1a1a');
-      t2.setAttribute('align', 'center');
-      t2.setAttribute('width', '1.4');
-      t2.setAttribute('position', '0 0.14 0.08');
-      t2.setAttribute('rotation', '-90 0 0');
-      target.appendChild(t2);
-
-      // 校训
-      var t3 = document.createElement('a-text');
-      t3.setAttribute('value', '勤朴诚毅');
-      t3.setAttribute('color', '#2c5f3f');
-      t3.setAttribute('align', 'center');
-      t3.setAttribute('width', '0.8');
-      t3.setAttribute('position', '0 -0.02 0.08');
-      t3.setAttribute('rotation', '-90 0 0');
-      target.appendChild(t3);
-
-      // 校史按钮
-      var btn1 = document.createElement('a-plane');
-      btn1.setAttribute('class', 'clickable');
-      btn1.setAttribute('width', '0.52');
-      btn1.setAttribute('height', '0.2');
-      btn1.setAttribute('color', '#8b1a1a');
-      btn1.setAttribute('position', '-0.36 -0.22 0.08');
-      btn1.setAttribute('rotation', '-90 0 0');
-      btn1.setAttribute('data-title', '校史沿革');
-      btn1.setAttribute('data-content', '1904年创办，始名承志，后更名钟英，取「钟阜育英才」之意，为南京近代首所私立中学。百廿年来八迁校址，历经抗战西迁，1954年定址秦淮九条巷曾公祠，2014年恢复钟英校名。校训「勤朴诚毅」。');
-      var btn1text = document.createElement('a-text');
-      btn1text.setAttribute('value', '校史沿革');
-      btn1text.setAttribute('color', '#f5e6c8');
-      btn1text.setAttribute('align', 'center');
-      btn1text.setAttribute('width', '0.48');
-      btn1text.setAttribute('position', '0 0 0.006');
-      btn1.appendChild(btn1text);
-      target.appendChild(btn1);
-
-      // 校友按钮
-      var btn2 = document.createElement('a-plane');
-      btn2.setAttribute('class', 'clickable');
-      btn2.setAttribute('width', '0.52');
-      btn2.setAttribute('height', '0.2');
-      btn2.setAttribute('color', '#2c5f3f');
-      btn2.setAttribute('position', '0.36 -0.22 0.08');
-      btn2.setAttribute('rotation', '-90 0 0');
-      btn2.setAttribute('data-title', '杰出校友');
-      btn2.setAttribute('data-content', '两弹一星元勋任新民、两院院士建筑学家吴良镛、前教育部长刘西尧、著名画家刘宇一、作家叶兆言、演员游本昌……钟阜毓秀，英才辈出。');
-      var btn2text = document.createElement('a-text');
-      btn2text.setAttribute('value', '杰出校友');
-      btn2text.setAttribute('color', '#f5e6c8');
-      btn2text.setAttribute('align', 'center');
-      btn2text.setAttribute('width', '0.48');
-      btn2text.setAttribute('position', '0 0 0.006');
-      btn2.appendChild(btn2text);
-      target.appendChild(btn2);
-
-      // 银杏叶
-      var leaves = document.createElement('a-entity');
-      leaves.setAttribute('id', 'leaves');
-      var colors = ['#f5c542', '#e8a317', '#f0d060', '#d4a017'];
-      for (var i = 0; i < 15; i++) {
-        var leaf = document.createElement('a-plane');
-        var x = (Math.random()-0.5)*1.4;
-        var y = 0.5 + Math.random()*0.4;
-        var z = 0.05 + Math.random()*0.1;
-        var delay = Math.random()*5000;
-        var dur = 3500 + Math.random()*2500;
-        leaf.setAttribute('width', '0.09');
-        leaf.setAttribute('height', '0.09');
-        leaf.setAttribute('position', x+' '+y+' '+z);
-        leaf.setAttribute('rotation', '-90 0 '+(Math.random()*360));
-        leaf.setAttribute('material', 'color:'+colors[Math.floor(Math.random()*colors.length)]+'; side: double; transparent: true; opacity: 0.92');
-        leaf.setAttribute('animation', 'property: position; to: '+(x+(Math.random()-0.5)*0.3)+' -0.45 '+z+'; loop: true; dur: '+dur+'; delay: '+delay+'; easing: easeInQuad');
-        leaf.setAttribute('animation__2', 'property: rotation; to: -90 0 '+(Math.random()*720)+'; loop: true; dur: '+dur+'; delay: '+delay+'; easing: linear');
-        leaves.appendChild(leaf);
+    scene.addEventListener('click', function(e) {
+      var t = e.target.closest('.clickable');
+      if (t) {
+        document.getElementById('panel-title').textContent = t.getAttribute('data-title');
+        document.getElementById('panel-content').textContent = t.getAttribute('data-content');
+        document.getElementById('info-panel').style.display = 'block';
       }
-      target.appendChild(leaves);
-
-      scene.appendChild(target);
-      document.body.appendChild(scene);
-
-      // 点击交互
-      scene.addEventListener('click', function(e) {
-        var t = e.target.closest('.clickable');
-        if (t) {
-          document.getElementById('panel-title').textContent = t.getAttribute('data-title');
-          document.getElementById('panel-content').textContent = t.getAttribute('data-content');
-          document.getElementById('info-panel').style.display = 'block';
-        }
-      });
-    }
+    });
   </script>
 </body>
 </html>
