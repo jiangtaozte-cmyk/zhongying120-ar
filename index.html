@@ -103,43 +103,8 @@
     <p id="panel-content"></p>
   </div>
 
-  <a-scene
-    id="ar-scene"
-    mindar-image="imageTargetSrc: ./targets.mind; uiLoading: #loading; uiScanning: #scanning;"
-    color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
-
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-entity light="type: ambient; color: #fff5e6; intensity: 0.8"></a-entity>
-      <a-entity light="type: directional; color: #f5c542; intensity: 1.0" position="2 3 2"></a-entity>
-
-      <a-text value="120" color="#f5c542" align="center" width="1.0"
-              position="0 0.32 0.08" rotation="-90 0 0"
-              animation="property: rotation; from: -90 0 0; to: -90 360 0; loop: true; dur: 7000; easing: linear"></a-text>
-      <a-text value="钟英中学 百廿校庆" color="#8b1a1a" align="center" width="1.4"
-              position="0 0.14 0.08" rotation="-90 0 0"></a-text>
-      <a-text value="勤朴诚毅" color="#2c5f3f" align="center" width="0.8"
-              position="0 -0.02 0.08" rotation="-90 0 0"></a-text>
-
-      <a-plane class="clickable" width="0.52" height="0.2" color="#8b1a1a"
-               position="-0.36 -0.22 0.08" rotation="-90 0 0"
-               data-title="校史沿革"
-               data-content="1904年创办，始名承志，后更名钟英，取「钟阜育英才」之意，为南京近代首所私立中学。百廿年来八迁校址，历经抗战西迁，1954年定址秦淮九条巷曾公祠，2014年恢复钟英校名。校训「勤朴诚毅」。">
-        <a-text value="校史沿革" color="#f5e6c8" align="center" width="0.48" position="0 0 0.006"></a-text>
-      </a-plane>
-      <a-plane class="clickable" width="0.52" height="0.2" color="#2c5f3f"
-               position="0.36 -0.22 0.08" rotation="-90 0 0"
-               data-title="杰出校友"
-               data-content="两弹一星元勋任新民、两院院士建筑学家吴良镛、前教育部长刘西尧、著名画家刘宇一、作家叶兆言、演员游本昌……钟阜毓秀，英才辈出。">
-        <a-text value="杰出校友" color="#f5e6c8" align="center" width="0.48" position="0 0 0.006"></a-text>
-      </a-plane>
-      <a-entity id="leaves"></a-entity>
-    </a-entity>
-  </a-scene>
+  <!-- 场景容器：JS动态创建a-scene，确保aframe加载后再初始化 -->
+  <div id="scene-container"></div>
 
   <!-- 动态加载JS，带多CDN备用 -->
   <script>
@@ -203,6 +168,27 @@
     __log('MINDAR: ' + (typeof window.MINDAR !== 'undefined' ? '已加载' : '未加载'), typeof window.MINDAR !== 'undefined' ? 'ok' : 'fail');
     __log('AFRAME: ' + (typeof AFRAME !== 'undefined' ? '已加载' : '未加载'), typeof AFRAME !== 'undefined' ? 'ok' : 'fail');
 
+    // 动态创建a-scene，确保aframe加载后再初始化
+    var sceneHtml = '<a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; uiLoading: #loading; uiScanning: #scanning;" color-space="sRGB" renderer="colorManagement: true; physicallyCorrectLights: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">' +
+      '<a-camera position="0 0 0" look-controls="enabled: false"></a-camera>' +
+      '<a-entity mindar-image-target="targetIndex: 0">' +
+        '<a-entity light="type: ambient; color: #fff5e6; intensity: 0.8"></a-entity>' +
+        '<a-entity light="type: directional; color: #f5c542; intensity: 1.0" position="2 3 2"></a-entity>' +
+        '<a-text value="120" color="#f5c542" align="center" width="1.0" position="0 0.32 0.08" rotation="-90 0 0" animation="property: rotation; from: -90 0 0; to: -90 360 0; loop: true; dur: 7000; easing: linear"></a-text>' +
+        '<a-text value="钟英中学 百廿校庆" color="#8b1a1a" align="center" width="1.4" position="0 0.14 0.08" rotation="-90 0 0"></a-text>' +
+        '<a-text value="勤朴诚毅" color="#2c5f3f" align="center" width="0.8" position="0 -0.02 0.08" rotation="-90 0 0"></a-text>' +
+        '<a-plane class="clickable" width="0.52" height="0.2" color="#8b1a1a" position="-0.36 -0.22 0.08" rotation="-90 0 0" data-title="校史沿革" data-content="1904年创办，始名承志，后更名钟英，取「钟阜育英才」之意，为南京近代首所私立中学。百廿年来八迁校址，历经抗战西迁，1954年定址秦淮九条巷曾公祠，2014年恢复钟英校名。校训「勤朴诚毅」。">' +
+          '<a-text value="校史沿革" color="#f5e6c8" align="center" width="0.48" position="0 0 0.006"></a-text>' +
+        '</a-plane>' +
+        '<a-plane class="clickable" width="0.52" height="0.2" color="#2c5f3f" position="0.36 -0.22 0.08" rotation="-90 0 0" data-title="杰出校友" data-content="两弹一星元勋任新民、两院院士建筑学家吴良镛、前教育部长刘西尧、著名画家刘宇一、作家叶兆言、演员游本昌……钟阜毓秀，英才辈出。">' +
+          '<a-text value="杰出校友" color="#f5e6c8" align="center" width="0.48" position="0 0 0.006"></a-text>' +
+        '</a-plane>' +
+        '<a-entity id="leaves"></a-entity>' +
+      '</a-entity>' +
+    '</a-scene>';
+    document.getElementById('scene-container').innerHTML = sceneHtml;
+    __log('场景已创建', 'ok');
+
     var scene = document.getElementById('ar-scene');
     scene.addEventListener('loaded', function() { __log('场景 loaded', 'ok'); });
     scene.addEventListener('renderstart', function() { __log('渲染启动', 'ok'); });
@@ -219,20 +205,27 @@
     setTimeout(function() {
       var c = scene.components['mindar-image'];
       __log('mindar组件: ' + (c ? '存在' : '不存在'), c ? 'ok' : 'fail');
+      if (c) {
+        __log('mindar系统: ' + (scene.systems['mindar-image-system'] ? '存在' : '不存在'), scene.systems['mindar-image-system'] ? 'ok' : 'fail');
+      }
     }, 3000);
 
-    var leaves = document.getElementById('leaves');
-    var colors = ['#f5c542', '#e8a317', '#f0d060', '#d4a017'];
-    for (var i = 0; i < 15; i++) {
-      var leaf = document.createElement('a-plane');
-      var x = (Math.random()-0.5)*1.4, y = 0.5+Math.random()*0.4, z = 0.05+Math.random()*0.1;
-      leaf.setAttribute('width','0.09'); leaf.setAttribute('height','0.09');
-      leaf.setAttribute('position', x+' '+y+' '+z);
-      leaf.setAttribute('rotation', '-90 0 '+(Math.random()*360));
-      leaf.setAttribute('material', 'color:'+colors[i%4]+'; side:double; transparent:true; opacity:0.92');
-      leaf.setAttribute('animation', 'property:position; to:'+(x+(Math.random()-0.5)*0.3)+' -0.45 '+z+'; loop:true; dur:'+(3500+Math.random()*2500)+'; delay:'+(Math.random()*5000)+'; easing:easeInQuad');
-      leaves.appendChild(leaf);
-    }
+    // 银杏叶
+    setTimeout(function() {
+      var leaves = document.getElementById('leaves');
+      if (!leaves) return;
+      var colors = ['#f5c542', '#e8a317', '#f0d060', '#d4a017'];
+      for (var i = 0; i < 15; i++) {
+        var leaf = document.createElement('a-plane');
+        var x = (Math.random()-0.5)*1.4, y = 0.5+Math.random()*0.4, z = 0.05+Math.random()*0.1;
+        leaf.setAttribute('width','0.09'); leaf.setAttribute('height','0.09');
+        leaf.setAttribute('position', x+' '+y+' '+z);
+        leaf.setAttribute('rotation', '-90 0 '+(Math.random()*360));
+        leaf.setAttribute('material', 'color:'+colors[i%4]+'; side:double; transparent:true; opacity:0.92');
+        leaf.setAttribute('animation', 'property:position; to:'+(x+(Math.random()-0.5)*0.3)+' -0.45 '+z+'; loop:true; dur:'+(3500+Math.random()*2500)+'; delay:'+(Math.random()*5000)+'; easing:easeInQuad');
+        leaves.appendChild(leaf);
+      }
+    }, 1000);
 
     scene.addEventListener('click', function(e) {
       var t = e.target.closest('.clickable');
