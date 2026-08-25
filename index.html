@@ -141,12 +141,48 @@
     </a-entity>
   </a-scene>
 
-  <!-- CDN 引用 MindAR 1.1.5（UMD稳定版）+ A-Frame，无需上传JS文件 -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-v1.4.2.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-aframe.prod.js"></script>
+  <!-- 动态加载JS，带多CDN备用 -->
+  <script>
+    function loadScript(urls, name) {
+      return new Promise(function(resolve, reject) {
+        var i = 0;
+        function tryNext() {
+          if (i >= urls.length) { reject(new Error(name + ' all CDN failed')); return; }
+          var s = document.createElement('script');
+          s.src = urls[i];
+          s.onload = function() { __log(name + ' 加载成功 (' + urls[i].split('/')[2] + ')', 'ok'); resolve(); };
+          s.onerror = function() { __log(name + ' 失败: ' + urls[i].split('/')[2], 'warn'); i++; tryNext(); };
+          document.head.appendChild(s);
+        }
+        tryNext();
+      });
+    }
+    loadScript([
+      'https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image.prod.js',
+      'https://unpkg.com/mind-ar@1.1.5/dist/mindar-image.prod.js'
+    ], 'MINDAR').then(function() {
+      return loadScript([
+        'https://unpkg.com/aframe@1.4.2/dist/aframe-v1.4.2.min.js',
+        'https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-v1.4.2.min.js',
+        'https://aframe.io/releases/1.4.2/aframe.min.js'
+      ], 'AFRAME');
+    }).then(function() {
+      return loadScript([
+        'https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-aframe.prod.js',
+        'https://unpkg.com/mind-ar@1.1.5/dist/mindar-image-aframe.prod.js'
+      ], 'MindAR-AFrame');
+    }).then(function() {
+      __log('所有库加载完成', 'ok');
+      initARLogic();
+    }).catch(function(e) {
+      __log('加载失败: ' + e.message, 'fail');
+      document.getElementById('loading').innerHTML = '<h1 style="color:#ff9999">库加载失败</h1><p>' + e.message + '</p><p style="font-size:11px;margin-top:10px">请检查网络连接后重试</p>';
+      document.getElementById('debug').style.display = 'block';
+    });
+  </script>
 
   <script>
+    function initARLogic() {
     __log('主脚本执行', 'ok');
     __log('MINDAR: ' + (typeof window.MINDAR !== 'undefined' ? '已加载' : '未加载'), typeof window.MINDAR !== 'undefined' ? 'ok' : 'fail');
     __log('AFRAME: ' + (typeof AFRAME !== 'undefined' ? '已加载' : '未加载'), typeof AFRAME !== 'undefined' ? 'ok' : 'fail');
@@ -190,6 +226,7 @@
         document.getElementById('info-panel').style.display = 'block';
       }
     });
+    }
   </script>
 </body>
 </html>
