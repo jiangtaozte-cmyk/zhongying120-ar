@@ -143,14 +143,21 @@
 
   <!-- 动态加载JS，带多CDN备用 -->
   <script>
-    function loadScript(urls, name) {
+    function loadScript(urls, name, verify) {
       return new Promise(function(resolve, reject) {
         var i = 0;
         function tryNext() {
           if (i >= urls.length) { reject(new Error(name + ' all CDN failed')); return; }
           var s = document.createElement('script');
           s.src = urls[i];
-          s.onload = function() { __log(name + ' 加载成功 (' + urls[i].split('/')[2] + ')', 'ok'); resolve(); };
+          s.onload = function() {
+            if (verify && !verify()) {
+              __log(name + ' 加载但未定义 (' + urls[i].split('/')[2] + ')，换下一个', 'warn');
+              i++; tryNext();
+            } else {
+              __log(name + ' 加载成功 (' + urls[i].split('/')[2] + ')', 'ok'); resolve();
+            }
+          };
           s.onerror = function() { __log(name + ' 失败: ' + urls[i].split('/')[2], 'warn'); i++; tryNext(); };
           document.head.appendChild(s);
         }
@@ -160,12 +167,12 @@
     loadScript([
       'https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image.prod.js',
       'https://unpkg.com/mind-ar@1.1.5/dist/mindar-image.prod.js'
-    ], 'MINDAR').then(function() {
+    ], 'MINDAR', function(){ return typeof window.MINDAR !== 'undefined'; }).then(function() {
       return loadScript([
-        'https://unpkg.com/aframe@1.4.2/dist/aframe-v1.4.2.min.js',
         'https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-v1.4.2.min.js',
+        'https://unpkg.com/aframe@1.4.2/dist/aframe-v1.4.2.min.js',
         'https://aframe.io/releases/1.4.2/aframe.min.js'
-      ], 'AFRAME');
+      ], 'AFRAME', function(){ return typeof AFRAME !== 'undefined'; });
     }).then(function() {
       return loadScript([
         'https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-aframe.prod.js',
