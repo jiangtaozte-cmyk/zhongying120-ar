@@ -695,9 +695,9 @@
       __log('AR就绪 arReady', 'ok');
       startBtn.disabled = false;
       startBtn.textContent = '开始体验';
-      // 已就绪、显示"开始体验"，等待标记就不再转（加载完成后它只占位，无需继续转）
+      // 已就绪、显示"开始体验"，加载图标直接消失（它只在真正加载时出现）
       var sp = document.getElementById('loading').querySelector('.spinner');
-      if (sp) sp.style.animation = 'none';
+      if (sp) sp.style.display = 'none';
     });
     scene.addEventListener('arError', function(e){
       var err = (e.detail && e.detail.error) || '';
