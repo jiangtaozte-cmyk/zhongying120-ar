@@ -564,6 +564,8 @@
       var ld = document.getElementById('loading'); if (ld) ld.style.display = 'none';
       var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'block';
       __log('用户已开始体验', 'ok');
+      userStarted = true;                               // 遮罩消失后才能播入场（否则挡在遮罩后）
+      maybeEnterStars(lastFoundCard);
     });
 
     // ---- 视频媒体取用 + 静音解锁（无声视频 muted 后可免手势自动播放）----
@@ -704,6 +706,22 @@
     // 银杏叶（按卡惰性生成，仅首次识别时）
     var leavesSpawned = {};
     var starsEntered = {};
+    // 入场只在"用户已开始体验(遮罩消失)"且"识别到星墙卡"都满足后才播，否则会挡在 #loading 遮罩后看不到
+    var userStarted = false, lastFoundCard = '';
+    function maybeEnterStars(id){
+      if (!userStarted) return;
+      if (!id || starsEntered[id]) return;
+      var c = cardsById[id];
+      if (!c || c.type !== 'starwall') return;
+      starsEntered[id] = true;
+      var root = document.getElementById('card-' + id);
+      // wander 是 a-entity 上的属性而非标签，须用属性选择器 [wander] 才会选中这些星
+      var entered = 0;
+      if (root) root.querySelectorAll('[wander]').forEach(function(el){
+        var w = el.components.wander; if (w && w.enter){ w.enter(); entered++; }
+      });
+      __log('入场动画: ' + entered + ' 颗星升起', entered ? 'ok' : 'fail');
+    }
     function spawnLeaves(id){
       if (leavesSpawned[id]) return; leavesSpawned[id] = true;
       var container = document.getElementById('leaves-' + id); if (!container) return;
@@ -721,6 +739,7 @@
 
     scene.addEventListener('targetFound', function(e){
       var id = e.target.getAttribute('data-card-id');
+      lastFoundCard = id;
       __log('>>> 识别: ' + (id || '?'), 'ok');
       var c = cardsById[id];
       var f = document.getElementById('found');
@@ -728,16 +747,7 @@
       var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'none';
       setTimeout(function(){ var ff = document.getElementById('found'); if (ff) ff.style.display = 'none'; }, 2500);
       spawnLeaves(id);
-      if (c && c.type === 'starwall' && !starsEntered[id]){
-        starsEntered[id] = true;
-        var root = document.getElementById('card-' + id);
-        // wander 是 a-entity 上的属性而非标签，须用属性选择器 [wander] 才会选中这些星
-        var entered = 0;
-        if (root) root.querySelectorAll('[wander]').forEach(function(el){
-          var w = el.components.wander; if (w && w.enter){ w.enter(); entered++; }
-        });
-        __log('入场动画: ' + entered + ' 颗星升起', entered ? 'ok' : 'fail');
-      }
+      maybeEnterStars(id);
       if (c) {
         if (speechPrimed) speak('intro-' + c.id, c.intro);
         if (c.hasVideo) { var m = getVideoMedia(id); if (m) { try { var p = m.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {} } }
