@@ -229,7 +229,8 @@
           } else { lines.push(raw[r]); }
         }
         if (!lines.length) lines = [''];
-        var fam = '"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Heiti SC","SimHei","Noto Sans CJK SC",sans-serif';
+        // 优先典雅宋/楷体（iOS/安卓/Windows 自带），无则回退到常见黑体
+        var fam = '"Songti SC","STSong","NSimSun","SimSun","Noto Serif CJK SC","Noto Serif SC","KaiTi","STKaiti","FangSong","Microsoft YaHei","PingFang SC",sans-serif';
         var fs = 200;
         var c = document.createElement('canvas'), ctx = c.getContext('2d');
         ctx.font = d.weight + ' ' + fs + 'px ' + fam;
@@ -468,7 +469,7 @@
         return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09">'
           + '<a-entity star="size: 0.24; color: #f5c542" '
             + 'animation="property: scale; from: 1 1 1; to: 1.18 1.18 1; dir: alternate; loop: true; dur: '+(1400+i*120)+'; easing: easeInOutQuad"></a-entity>'
-          + '<a-entity cjktext="value: '+a.name+'; color: #2c1810; width: 0.24" position="0 -0.15 0.002"></a-entity>'
+          + '<a-entity cjktext="value: '+a.name+'; color: #2c1810; width: 0.22" position="0 -0.14 0.002"></a-entity>'
           + '</a-entity>';
       }).join('');
     }
@@ -482,12 +483,12 @@
         // 相框
         + '<a-plane width="1.24" height="1.72" color="#2c1810" position="0 0 0.08" rotation="0 0 0" material="side: double; transparent: true; opacity: 0.92; shader: flat"></a-plane>'
         + '<a-plane width="1.16" height="1.64" color="#f5e6c8" position="0 0 0.082" rotation="0 0 0" material="side: double; transparent: true; opacity: 0.97; shader: flat"></a-plane>'
-        // 标题/年代（A-Frame a-text 无中文字形，改用 canvas 纹理 cjktext；宽度收窄避免过大）
-        + '<a-entity cjktext="value: ' + c.title + '; color: #8b1a1a; width: 0.62" position="0 0.66 0.084"></a-entity>'
-        + '<a-entity cjktext="value: ' + c.era + '; color: #2c5f3f; width: 0.42" position="0 0.56 0.084"></a-entity>';
+        // 标题/年代（A-Frame a-text 无中文字形，改用 canvas 纹理 cjktext；上下分开+收窄避免重叠）
+        + '<a-entity cjktext="value: ' + c.title + '; color: #8b1a1a; width: 0.5" position="0 0.70 0.084"></a-entity>'
+        + '<a-entity cjktext="value: ' + c.era + '; color: #2c5f3f; width: 0.32" position="0 0.50 0.084"></a-entity>';
       if (isStar) {
         h += starHtml(c)
-          + '<a-entity cjktext="value: 点击星辰 · 走近校友; color: #2c5f3f; width: 0.42" position="0 -0.62 0.084"></a-entity>';
+          + '<a-entity cjktext="value: 点击星辰 · 走近校友; color: #2c5f3f; width: 0.34" position="0 -0.62 0.084"></a-entity>';
       } else {
         h += visualHtml(c)
           + '<a-entity id="intro-' + c.id + '" cjktext="color: #2c1810; width: 1.05; wrap: 18" position="0 -0.24 0.084"></a-entity>'
@@ -511,6 +512,23 @@
       + '</a-scene>';
     document.getElementById('scene-container').innerHTML = sceneHtml;
     __log('场景已创建 (' + cards.length + ' 卡)', 'ok');
+
+    // ---- 典雅字体重绘：serif 系统字体可能比黑体晚就绪，就绪后重绘所有 cjktext ----
+    function redrawCJK(){
+      document.querySelectorAll('[cjktext]').forEach(function(el){
+        if (el.components && el.components.cjktext) el.components.cjktext.update();
+      });
+    }
+    function readySerif(){
+      redrawCJK();
+      if (document.fonts && document.fonts.load) {
+        ['700 200px "Songti SC","Noto Serif SC","SimSun"', '900 200px "Songti SC","Noto Serif SC","SimSun"'].forEach(function(spec){
+          try { document.fonts.load(spec).then(redrawCJK); } catch (e) {}
+        });
+        if (document.fonts.ready) document.fonts.ready.then(redrawCJK);
+      }
+    }
+    setTimeout(readySerif, 1200);
 
     // 设介绍文本（cjktext 对象赋值，规避 a-text 中文空白；全角标点安全）
     cards.forEach(function(c){
@@ -579,43 +597,56 @@
       if (c && c.hasVideo) { var m = getVideoMedia(id); if (m) { try { m.pause(); } catch (e) {} } }
     });
 
-    // 点击/触摸拾取：A-Frame cursor(rayOrigin:mouse) 在移动端 tap 不可靠，
-    // 改用手动 Raycaster：由归一化屏幕坐标求出射线，命中可见网格后沿 object3D 向上找 .clickable。
-    var _ray = new THREE.Raycaster();
-    var _ndc = new THREE.Vector2();
+    // 点击/触摸拾取：把每个 .clickable 的世界坐标投到屏幕，命中最近且在阈值内的那个。
+    // 弃用 Raycaster 与 A-Frame cursor —— 在 MindAR/A-Frame 下 tap 时相机与场景树不可靠，投影命中更稳。
+    var _pv = new THREE.Vector3();
     var _lastTap = 0;
+    function getCam(){
+      if (scene.camera) return scene.camera;
+      var a = scene.querySelector('a-camera');
+      if (a && a.getObject3D){ var c = a.getObject3D('camera'); if (c) return c; }
+      var sys = scene.systems && scene.systems.camera;
+      if (sys && sys.cameraEl){ var c2 = sys.cameraEl.getObject3D('camera'); if (c2) return c2; }
+      return null;
+    }
+    function findClickableAt(cx, cy){
+      var cam = getCam(); if (!cam) return { el: null, d: Infinity };
+      var canvas = scene.canvas || document.querySelector('#scene-container canvas');
+      if (!canvas) return { el: null, d: Infinity };
+      var rect = canvas.getBoundingClientRect();
+      var best = null, bestD = Infinity;
+      var list = document.querySelectorAll('#ar-scene .clickable');
+      for (var i = 0; i < list.length; i++){
+        var el = list[i];
+        var te = el.closest('mindar-image-target');        // 只命中已跟踪(可见)目标的内容
+        if (te){ var w = te.object3D, vis = true; while (w){ if (!w.visible){ vis = false; break; } w = w.parent; } if (!vis) continue; }
+        el.object3D.getWorldPosition(_pv);
+        _pv.project(cam);
+        if (_pv.z < -1 || _pv.z > 1) continue;
+        var sx = (_pv.x * 0.5 + 0.5) * rect.width + rect.left;
+        var sy = (-_pv.y * 0.5 + 0.5) * rect.height + rect.top;
+        var d = Math.sqrt((sx - cx) * (sx - cx) + (sy - cy) * (sy - cy));
+        if (d < bestD){ bestD = d; best = el; }
+      }
+      return { el: best, d: bestD };
+    }
     function pickAt(cx, cy){
       var now = Date.now(); if (now - _lastTap < 350) return; _lastTap = now;
+      if (!getCam()){ __log('拾取: 无相机', 'fail'); return; }
+      var res = findClickableAt(cx, cy);
+      if (!res.el){ __log('拾取: 无命中', 'warn'); return; }
       var canvas = scene.canvas || document.querySelector('#scene-container canvas');
-      if (!canvas) return;
-      var rect = canvas.getBoundingClientRect();
-      _ndc.x = ((cx - rect.left) / rect.width) * 2 - 1;
-      _ndc.y = -((cy - rect.top) / rect.height) * 2 + 1;
-      var cam = scene.camera; if (!cam) return;
-      _ray.setFromCamera(_ndc, cam);
-      var hits = _ray.intersectObjects(scene.object3D, true);
-      for (var i = 0; i < hits.length; i++){
-        var o = hits[i].object, vis = true, w = o;
-        while (w){ if (!w.visible){ vis = false; break; } w = w.parent; }
-        if (!vis) continue;                                  // 跳过未跟踪(隐藏)的目标内容
-        var el = null; w = o;
-        while (w){ if (w.el){ el = w.el; break; } w = w.parent; }
-        if (!el) continue;
-        var t = el.closest('.clickable'); if (!t) continue;
-        var alumId = t.getAttribute('data-alum-id');
-        if (alumId !== null && alumId !== undefined) { openAlum(parseInt(alumId,10)); return; }
-        var action = t.getAttribute('data-action');
-        var cardId = t.getAttribute('data-card-id');
-        if (action === 'narrate' && cardId && cardsById[cardId]) {
-          primeSpeech(); speak(cardsById[cardId].intro);
-          __log('语音解说: ' + cardId, 'ok'); return;
-        }
-      }
+      var thr = Math.max(58, (canvas ? canvas.getBoundingClientRect().width : 320) * 0.08);
+      if (res.d > thr){ __log('拾取: 太远(' + Math.round(res.d) + 'px)', 'warn'); return; }
+      var el = res.el;
+      var alumId = el.getAttribute('data-alum-id');
+      if (alumId !== null && alumId !== undefined){ __log('拾取: 校友#' + alumId, 'ok'); openAlum(parseInt(alumId,10)); return; }
+      var action = el.getAttribute('data-action');
+      var cardId = el.getAttribute('data-card-id');
+      if (action === 'narrate' && cardId && cardsById[cardId]){ primeSpeech(); speak(cardsById[cardId].intro); __log('语音解说:' + cardId, 'ok'); }
     }
     scene.addEventListener('click', function(e){ pickAt(e.clientX, e.clientY); });
-    scene.addEventListener('touchend', function(e){
-      var t = (e.changedTouches && e.changedTouches[0]); if (t) pickAt(t.clientX, t.clientY);
-    });
+    scene.addEventListener('touchend', function(e){ var t = (e.changedTouches && e.changedTouches[0]); if (t) pickAt(t.clientX, t.clientY); });
 
     // 生平弹窗控件
     document.getElementById('close').addEventListener('click', closeAlum);
