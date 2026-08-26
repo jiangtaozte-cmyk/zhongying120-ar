@@ -483,8 +483,12 @@
       document.getElementById('p-name').textContent=a.name;
       document.getElementById('p-title').textContent=a.title;
       document.getElementById('p-bio').textContent=a.bio;
-      // 立即切占位图 + 隐藏图片元素，避免显示上一位校友的旧位图；并用 token 丢弃过期加载结果
-      var img=document.getElementById('p-photo');
+      // 彻底换一个新的 <img> 节点（replaceChild 复用旧节点时，它的旧位图可能在异步解码间隙残留闪现）
+      var pw=document.getElementById('photo-wrap');
+      var old=document.getElementById('p-photo');
+      var img=document.createElement('img');
+      img.id='p-photo'; img.alt='校友照片';
+      if (pw && old) pw.replaceChild(img, old);
       img.onerror=function(){ img.onerror=null; img.src=SIL; };
       img.style.visibility='hidden';   // 先藏：换 src 是异步解码，旧位图会残留一两个帧，先隐藏保证不闪旧图
       img.src=SIL;
@@ -767,6 +771,8 @@
       __log('目标丢失: ' + id, 'warn');
       var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'block';
       var f = document.getElementById('found'); if (f) f.style.display = 'none';
+      // 允许再次识别到卡时重新播放星星入场动画（移开再移回即可重看）
+      if (starsEntered[id]) starsEntered[id] = false;
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       stopCurAudio();
       var c = cardsById[id];
