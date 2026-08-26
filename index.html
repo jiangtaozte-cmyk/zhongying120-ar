@@ -324,7 +324,7 @@
         speed: { type: 'number', default: 0.0026 },
         r:     { type: 'number', default: 0.13 },  // 碰撞半径
         enterDelay: { type: 'number', default: 0 },   // 入场：该颗延迟 ms（逐颗升起用）
-        enterRise:  { type: 'number', default: 1.0 }  // 入场：从卡面下方多高处升起（米）
+        enterRise:  { type: 'number', default: 0.8 }  // 入场：从卡面下方多高处升起（米）
       },
       init: function () {
         this.entering = false;                     // 入场升起开关（识别到卡由 enter() 触发）
@@ -344,19 +344,23 @@
         this.homeY = this.me.position.y;                  // 目标高度（来自 STARS）
         this.startY = this.homeY - this.data.enterRise;   // 先沉到卡面之下
         this.me.position.y = this.startY;
-        this.enterDur = 900;
+        this.me.scale.set(0.2, 0.2, 1);                   // 从小放大，读作"从卡片中升起"
+        this.enterDur = 1400;
       },
       tick: function () {
         var p = this.me.position;
-        // 入场升起：未到该颗延迟时刻停在下方；用 easeOutCubic 逐颗升到原位，升完再接回漂移
+        // 入场升起：未到该颗延迟时刻停在下方；用 easeOutCubic 逐颗升到原位、从小放大，升完再接回漂移
         if (this.entering){
           var t = (performance.now() - this.enterT0 - this.data.enterDelay) / this.enterDur;
           if (t < 0) return;                          // 未到该颗，停在卡面下方
           if (t >= 1){ t = 1; this.entering = false; }
           t = 1 - Math.pow(1 - t, 3);                 // easeOutCubic
           p.y = this.startY + (this.homeY - this.startY) * t;
+          var sc = 0.2 + 0.8 * t;                     // 边长从 0.2 放大到 1
+          this.me.scale.set(sc, sc, 1);
           if (this.entering) return;
         }
+        this.me.scale.set(1, 1, 1);                    // 入场结束后恢复原始比例
         // 撞边反弹
         if (p.x < this.minX){ p.x = this.minX; this.vx = Math.abs(this.vx); }
         else if (p.x > this.maxX){ p.x = this.maxX; this.vx = -Math.abs(this.vx); }
@@ -605,7 +609,7 @@
     function starHtml(c){
       return ALUMNI.map(function(a, i){
         var s = STARS[i];
-        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0026; r: 0.13; enterDelay: '+(i*130)+'">'
+        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0026; r: 0.13; enterDelay: '+(i*200)+'">'
           + '<a-entity star="size: 0.24; color: #f5c542" '
             + 'animation="property: scale; from: 1 1 1; to: 1.18 1.18 1; dir: alternate; loop: true; dur: '+(1400+i*120)+'; easing: easeInOutQuad"></a-entity>'
           + '<a-entity cjktext="value: '+a.name+'; color: #f5e6c8; width: 0.24; outline: #3a2415; outlineWidth: 7" position="0 -0.14 0.002"></a-entity>'
