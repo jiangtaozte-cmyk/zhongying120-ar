@@ -12,21 +12,32 @@
        本项目把 a-scene 包在 #scene-container 里，该 div 默认无高度 → 视频只铺一半、下方黑屏。
        把它撑满视口即可，视频和 3D 内容会用同一个正确尺寸对齐。 */
     #scene-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
-    /* 兜底：MindAR 用 .hidden 类切换 loading/scanning 可见性（自带 CSS 仅在 uiLoading:'yes' 时注入） */
+    /* 兜底：MindAR 用 .hidden 类切换遮罩可见性 */
     .hidden { display: none !important; }
     #loading {
       position: fixed; inset: 0; display: flex; flex-direction: column;
       align-items: center; justify-content: center; color: #f5e6c8;
       background: linear-gradient(135deg, #8b1a1a 0%, #2c1810 100%); z-index: 999;
+      text-align: center;
     }
-    #loading h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: 6px; }
+    #loading h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: 6px; }
     #loading p { font-size: 12px; opacity: 0.7; margin: 3px 0; }
     .spinner {
       width: 32px; height: 32px; border: 3px solid rgba(245,230,200,0.2);
       border-top-color: #f5e6c8; border-radius: 50%;
-      animation: spin 1s linear infinite; margin: 14px 0;
+      animation: spin 1s linear infinite; margin: 16px 0 10px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    #start-btn {
+      margin-top: 4px; padding: 11px 30px; font-size: 16px; color: #2c1810;
+      background: linear-gradient(135deg, #f5c542, #e8a317); border: none; border-radius: 26px;
+      cursor: pointer; font-weight: bold; letter-spacing: 3px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35); font-family: inherit;
+    }
+    #start-btn:disabled {
+      background: rgba(245,230,200,0.18); color: rgba(245,230,200,0.5); cursor: not-allowed; box-shadow: none;
+    }
+    #start-btn:not(:disabled):active { transform: scale(0.97); }
     #debug {
       position: fixed; bottom: 10px; left: 10px; right: 10px;
       background: rgba(0,0,0,0.88); color: #0f0; font-family: monospace;
@@ -46,24 +57,12 @@
       position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
       color: #fff; background: rgba(139,26,26,0.85); padding: 12px 24px;
       border-radius: 24px; font-size: 14px; z-index: 10; pointer-events: none;
-      display: none;
+      display: none; white-space: nowrap;
     }
     #found {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-      color: #f5e6c8; background: rgba(44,95,63,0.9); padding: 8px 20px;
-      border-radius: 16px; font-size: 13px; z-index: 10; display: none;
-    }
-    #info-panel {
-      position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
-      width: 88%; max-width: 360px; background: rgba(255,255,255,0.97);
-      border-radius: 14px; padding: 18px; z-index: 30; display: none;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-    }
-    #info-panel h2 { margin: 0 0 10px; font-size: 17px; color: #8b1a1a; }
-    #info-panel p { margin: 0; font-size: 13.5px; line-height: 1.8; color: #333; }
-    #info-panel .close {
-      position: absolute; top: 10px; right: 14px; font-size: 22px;
-      color: #aaa; cursor: pointer; background: none; border: none;
+      color: #f5e6c8; background: rgba(44,95,63,0.92); padding: 8px 20px;
+      border-radius: 16px; font-size: 13px; z-index: 10; display: none; white-space: nowrap;
     }
   </style>
 
@@ -80,13 +79,6 @@
       }
       console.log('[AR] ' + msg);
     }
-    setTimeout(function() {
-      var ld = document.getElementById('loading');
-      if (ld && ld.style.display !== 'none') {
-        ld.innerHTML = '<h1 style="color:#ff9999">启动超时</h1><p>请点右上角"显示日志"并截图</p>';
-        document.getElementById('debug').style.display = 'block';
-      }
-    }, 30000);
   </script>
 </head>
 <body>
@@ -98,17 +90,12 @@
     <h1>钟阜育英才</h1>
     <p>南京市钟英中学 · 百廿校庆 AR</p>
     <div class="spinner"></div>
-    <p>正在加载…</p>
+    <button id="start-btn" disabled>正在加载…</button>
+    <p style="font-size:11px;opacity:0.6;margin-top:10px">扫描校庆纪念卡 · 体验 AR</p>
   </div>
 
-  <div id="scanning">📷 将镜头对准校庆海报</div>
+  <div id="scanning">📷 将镜头对准校庆纪念卡</div>
   <div id="found">✅ 已识别</div>
-
-  <div id="info-panel">
-    <button class="close" onclick="document.getElementById('info-panel').style.display='none'">×</button>
-    <h2 id="panel-title"></h2>
-    <p id="panel-content"></p>
-  </div>
 
   <!-- 场景容器：JS动态创建a-scene，确保aframe加载后再初始化 -->
   <div id="scene-container"></div>
@@ -175,40 +162,154 @@
     __log('MINDAR: ' + (typeof window.MINDAR !== 'undefined' ? '已加载' : '未加载'), typeof window.MINDAR !== 'undefined' ? 'ok' : 'fail');
     __log('AFRAME: ' + (typeof AFRAME !== 'undefined' ? '已加载' : '未加载'), typeof AFRAME !== 'undefined' ? 'ok' : 'fail');
 
-    // 动态创建a-scene，确保aframe加载后再初始化
-    var sceneHtml = '<a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; uiLoading: #loading; uiScanning: #scanning;" color-space="sRGB" renderer="colorManagement: true; physicallyCorrectLights: false" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">' +
-      '<a-camera position="0 0 0" look-controls="enabled: false"></a-camera>' +
-      '<a-entity mindar-image-target="targetIndex: 0">' +
-        '<a-entity light="type: ambient; color: #fff5e6; intensity: 0.8"></a-entity>' +
-        '<a-entity light="type: directional; color: #f5c542; intensity: 1.0" position="2 3 2"></a-entity>' +
-        '<a-text value="120" color="#f5c542" align="center" width="1.0" position="0 0.32 0.08" rotation="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 0 360; loop: true; dur: 7000; easing: linear"></a-text>' +
-        '<a-text value="钟英中学 百廿校庆" color="#8b1a1a" align="center" width="1.4" position="0 0.14 0.08" rotation="0 0 0"></a-text>' +
-        '<a-text value="勤朴诚毅" color="#2c5f3f" align="center" width="0.8" position="0 -0.02 0.08" rotation="0 0 0"></a-text>' +
-        '<a-plane class="clickable" width="0.52" height="0.2" color="#8b1a1a" position="-0.36 -0.22 0.08" rotation="0 0 0" data-title="校史沿革" data-content="1904年创办，始名承志，后更名钟英，取「钟阜育英才」之意，为南京近代首所私立中学。百廿年来八迁校址，历经抗战西迁，1954年定址秦淮九条巷曾公祠，2014年恢复钟英校名。校训「勤朴诚毅」。">' +
-          '<a-text value="校史沿革" color="#f5e6c8" align="center" width="0.48" position="0 0 0.006"></a-text>' +
-        '</a-plane>' +
-        '<a-plane class="clickable" width="0.52" height="0.2" color="#2c5f3f" position="0.36 -0.22 0.08" rotation="0 0 0" data-title="杰出校友" data-content="两弹一星元勋任新民、两院院士建筑学家吴良镛、前教育部长刘西尧、著名画家刘宇一、作家叶兆言、演员游本昌……钟阜毓秀，英才辈出。">' +
-          '<a-text value="杰出校友" color="#f5e6c8" align="center" width="0.48" position="0 0 0.006"></a-text>' +
-        '</a-plane>' +
-        '<a-entity id="leaves"></a-entity>' +
-      '</a-entity>' +
-    '</a-scene>';
+    // ---- 卡片数据（下标 = targetIndex = .mind 内图片编译顺序，硬约束）----
+    var cards = [
+      { id:'chengzhi',  title:'创校承志',   era:'1904',      hasVideo:false,
+        intro:'1904 年，承志学堂创办于南京，为近代首所私立中学之一。后取「钟阜育英才」之意更名钟英，立志育才兴邦。百廿薪火，自此点燃。' },
+      { id:'xiqian',    title:'抗战西迁',   era:'1937—1945', hasVideo:true,  vidW:0.92, vidH:0.52,
+        intro:'抗战烽火中，钟英师生跋涉西迁，弦歌不辍。颠沛流离间坚守办学，以读书救国，尽显江南学人风骨。' },
+      { id:'zenggongci',title:'曾公祠定址', era:'1954',      hasVideo:true,  vidW:0.92, vidH:0.52,
+        intro:'1954 年定址秦淮九条巷曾公祠，青砖黛瓦间书声琅琅。2014 年恢复钟英校名，文脉绵延，古祠新学。' },
+      { id:'fuming',    title:'恢复钟英',   era:'2014',      hasVideo:false,
+        intro:'2014 年，「钟英」校名回归。六十载沧桑，钟阜育才之志不泯；古祠新学，薪火重燃。' },
+      { id:'xiaoyou',   title:'杰出校友',   era:'群星璀璨',  hasVideo:true,  vidW:0.92, vidH:0.52,
+        intro:'任新民两弹一星、吴良镛两院院士、刘西尧前教育部长、刘宇一画家、叶兆言作家、游本昌演员……钟阜毓秀，英才辈出。' },
+      { id:'xiaoxun',   title:'校训文化',   era:'勤朴诚毅',  hasVideo:false,
+        intro:'勤以治事，朴以修身，诚以待人，毅以立志。四字校训，百廿传承，钟英学子立身之本。' }
+    ];
+    var cardsById = {};
+    cards.forEach(function(c){ cardsById[c.id] = c; });
+    __log('卡片数据: ' + cards.length + ' 张', 'ok');
+
+    // ---- TTS（Web Speech API）----
+    var speechPrimed = false, zhVoice = null;
+    function pickZhVoice(){
+      var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+      zhVoice = vs.find(function(v){ return v.lang === 'zh-CN'; })
+             || vs.find(function(v){ return /^zh/i.test(v.lang); })
+             || null;
+    }
+    if (window.speechSynthesis) { pickZhVoice(); speechSynthesis.onvoiceschanged = pickZhVoice; }
+    function speak(text){
+      if (!window.speechSynthesis || !speechPrimed || !text) return;
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-CN'; if (zhVoice) u.voice = zhVoice; u.rate = 0.95;
+      speechSynthesis.speak(u);
+    }
+    // 在用户手势内调用一次空播，解锁 iOS SpeechSynthesis（之后才可程序化 speak）
+    function primeSpeech(){
+      if (speechPrimed) return;
+      speechPrimed = true;
+      if (window.speechSynthesis) { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }
+    }
+
+    // ---- 入口按钮（同时是 iOS TTS 的解锁手势）----
+    var startBtn = document.getElementById('start-btn');
+    var arReadyFired = false;
+    startBtn.addEventListener('click', function(){
+      primeSpeech();                                   // 手势内解锁 TTS
+      var ld = document.getElementById('loading'); if (ld) ld.style.display = 'none';
+      var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'block';
+      __log('用户已开始体验', 'ok');
+    });
+
+    // ---- 视频媒体取用 + 静音解锁（无声视频 muted 后可免手势自动播放）----
+    function getVideoMedia(id){
+      var el = document.getElementById('vid-' + id); if (!el) return null;
+      try { return el.components.material.material.map.image; } catch (e) { return null; }
+    }
+    function unlockVideos(){
+      cards.forEach(function(c){
+        if (!c.hasVideo) return;
+        var m = getVideoMedia(c.id); if (!m) return;
+        try { m.muted = true; m.playsInline = true; if (m.setAttribute) m.setAttribute('playsinline',''); } catch (e) {}
+      });
+    }
+
+    // ---- 单卡视觉块（视频卡=a-video；非视频卡=A-Frame 图元+动画）----
+    function visualHtml(c){
+      if (c.hasVideo) {
+        return '<a-video id="vid-' + c.id + '" src="assets/video/' + c.id + '.mp4" width="' + c.vidW + '" height="' + c.vidH + '" '
+          + 'position="0 0.18 0.084" rotation="0 0 0" material="side: double" loop="true"></a-video>';
+      }
+      switch (c.id) {
+        case 'chengzhi': // 1904 烛火点燃
+          return '<a-text value="1904" color="#f5c542" align="center" width="1.2" position="0 0.22 0.084" rotation="0 0 0" '
+            + 'animation="property: scale; from: 0 0 0; to: 1 1 1; dur: 800; easing: easeOutBack"></a-text>'
+            + '<a-plane width="0.10" height="0.16" color="#f5c542" position="0 0.42 0.084" rotation="0 0 0" '
+            + 'material="side: double; transparent: true; opacity: 0.9; shader: flat" '
+            + 'animation="property: scale; from: 1 0.85 1; to: 0.85 1.15 1; dir: alternate; loop: true; dur: 500; easing: easeInOutQuad"></a-plane>';
+        case 'fuming': // 钟英 校名牌揭开
+          return '<a-plane width="0.8" height="0.34" color="#8b1a1a" position="0 0.22 0.084" rotation="0 0 0" '
+            + 'material="side: double; shader: flat" '
+            + 'animation="property: scale; from: 0 1 1; to: 1 1 1; dur: 900; easing: easeOutCubic"></a-plane>'
+            + '<a-text value="钟英" color="#f5c542" align="center" width="1.4" position="0 0.22 0.086" rotation="0 0 0" '
+            + 'animation="property: opacity; from: 0; to: 1; delay: 500; dur: 600"></a-text>';
+        case 'xiaoxun': // 勤朴诚毅 逐字现形
+          return ['勤','朴','诚','毅'].map(function(ch, i){
+            var x = -0.27 + i * 0.18;
+            return '<a-text value="' + ch + '" color="#8b1a1a" align="center" width="0.5" position="' + x + ' 0.22 0.084" rotation="0 0 0" '
+              + 'animation="property: opacity; from: 0; to: 1; dur: 400; delay: ' + (200 + i*300) + '"></a-text>';
+          }).join('');
+        default: return '';
+      }
+    }
+
+    // ---- 单卡实体模板 ----
+    function cardEntity(c, i){
+      return '<a-entity mindar-image-target="targetIndex: ' + i + '" data-card-id="' + c.id + '" id="card-' + c.id + '">'
+        + '<a-entity light="type: ambient; color: #fff5e6; intensity: 0.85"></a-entity>'
+        + '<a-entity light="type: directional; color: #f5c542; intensity: 0.9" position="2 3 2"></a-entity>'
+        // 相框
+        + '<a-plane width="1.24" height="1.72" color="#2c1810" position="0 0 0.08" rotation="0 0 0" material="side: double; transparent: true; opacity: 0.92; shader: flat"></a-plane>'
+        + '<a-plane width="1.16" height="1.64" color="#f5e6c8" position="0 0 0.082" rotation="0 0 0" material="side: double; transparent: true; opacity: 0.97; shader: flat"></a-plane>'
+        // 标题/年代（入场动画）
+        + '<a-text value="' + c.title + '" color="#8b1a1a" align="center" width="1.1" position="0 0.62 0.084" rotation="0 0 0" '
+          + 'animation="property: opacity; from: 0; to: 1; dur: 600; easing: easeOutQuad"></a-text>'
+        + '<a-text value="' + c.era + '" color="#2c5f3f" align="center" width="0.7" position="0 0.50 0.084" rotation="0 0 0" '
+          + 'animation="property: opacity; from: 0; to: 1; delay: 200; dur: 600"></a-text>'
+        // 视觉块
+        + visualHtml(c)
+        // ~120字介绍（value 由 JS setAttribute 设值，避免属性转义问题）
+        + '<a-text id="intro-' + c.id + '" color="#2c1810" align="center" width="1.05" wrapCount="22" position="0 -0.24 0.084" rotation="0 0 0" '
+          + 'animation="property: opacity; from: 0; to: 1; delay: 400; dur: 600"></a-text>'
+        // 解说按钮
+        + '<a-plane class="clickable" width="0.52" height="0.16" color="#8b1a1a" position="0 -0.62 0.084" rotation="0 0 0" '
+          + 'material="side: double; shader: flat" data-action="narrate" data-card-id="' + c.id + '" '
+          + 'animation="property: scale; from: 1 1 1; to: 0.94 0.94 1; dir: alternate; dur: 200; startEvents: click">'
+          + '<a-text value="🔊 语音解说" color="#f5e6c8" align="center" width="0.48" position="0 0 0.004" rotation="0 0 0"></a-text>'
+        + '</a-plane>'
+        + '<a-entity id="leaves-' + c.id + '"></a-entity>'
+      + '</a-entity>';
+    }
+
+    var sceneHtml = '<a-scene id="ar-scene" '
+      + 'mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1; uiLoading: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 1000; warmupTolerance: 3; missTolerance: 5" '
+      + 'color-space="sRGB" renderer="colorManagement: true; physicallyCorrectLights: false" '
+      + 'vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>'
+      + '<a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse; fuse: false"></a-camera>'
+      + cards.map(cardEntity).join('')
+      + '</a-scene>';
     document.getElementById('scene-container').innerHTML = sceneHtml;
-    __log('场景已创建', 'ok');
+    __log('场景已创建 (' + cards.length + ' 卡)', 'ok');
+
+    // 设介绍文本（含全角标点，setAttribute 安全）
+    cards.forEach(function(c){
+      var el = document.getElementById('intro-' + c.id);
+      if (el) el.setAttribute('value', c.intro);
+    });
 
     var scene = document.getElementById('ar-scene');
-    scene.addEventListener('loaded', function() { __log('场景 loaded', 'ok'); });
-    scene.addEventListener('renderstart', function() { __log('渲染启动', 'ok'); });
-    scene.addEventListener('arReady', function() {
+    scene.addEventListener('loaded', function(){ __log('场景 loaded', 'ok'); unlockVideos(); });
+    scene.addEventListener('renderstart', function(){ __log('渲染启动', 'ok'); });
+    scene.addEventListener('arReady', function(){
+      arReadyFired = true;
       __log('AR就绪 arReady', 'ok');
-      // MindAR 靠 classList.add('hidden') 隐藏遮罩，但本项目 CSS 无 .hidden 规则，
-      // 导致 #loading 一直盖住摄像头画面 —— 这里手动隐藏
-      var ld = document.getElementById('loading');
-      if (ld) ld.style.display = 'none';
-      var sc = document.getElementById('scanning');
-      if (sc) sc.style.display = 'block';
+      startBtn.disabled = false;
+      startBtn.textContent = '开始体验';
     });
-    scene.addEventListener('arError', function(e) {
+    scene.addEventListener('arError', function(e){
       var err = (e.detail && e.detail.error) || '';
       __log('AR错误: ' + err, 'fail');
       var ld = document.getElementById('loading');
@@ -217,15 +318,63 @@
         + '<p style="font-size:11px;margin-top:10px">请确认：1) 页面为 HTTPS 或 localhost；'
         + '2) 已授予相机权限；3) 浏览器支持 WebGL</p>';
     });
-    scene.addEventListener('targetFound', function() {
-      __log('>>> 识别成功', 'ok');
-      document.getElementById('found').style.display = 'block';
-      document.getElementById('scanning').style.display = 'none';
-      setTimeout(function(){ document.getElementById('found').style.display = 'none'; }, 3000);
-    });
-    scene.addEventListener('targetLost', function() { __log('目标丢失', 'warn'); document.getElementById('scanning').style.display = 'block'; });
 
-    setTimeout(function() {
+    // 银杏叶（按卡惰性生成，仅首次识别时）
+    var leavesSpawned = {};
+    function spawnLeaves(id){
+      if (leavesSpawned[id]) return; leavesSpawned[id] = true;
+      var container = document.getElementById('leaves-' + id); if (!container) return;
+      var colors = ['#f5c542', '#e8a317', '#f0d060', '#d4a017'];
+      for (var i = 0; i < 8; i++) {
+        var leaf = document.createElement('a-plane');
+        var x = (Math.random()-0.5)*1.2, y = 0.5 + Math.random()*0.4, z = 0.05 + Math.random()*0.1;
+        leaf.setAttribute('width','0.08'); leaf.setAttribute('height','0.08');
+        leaf.setAttribute('position', x + ' ' + y + ' ' + z);
+        leaf.setAttribute('rotation', '0 0 ' + (Math.random()*360));
+        leaf.setAttribute('material', 'color:' + colors[i%4] + '; side:double; transparent:true; opacity:0.92; shader:flat');
+        leaf.setAttribute('animation', 'property:position; to:' + (x+(Math.random()-0.5)*0.3) + ' -0.5 ' + z + '; loop:true; dur:' + (3500+Math.random()*2500) + '; delay:' + (Math.random()*4000) + '; easing:easeInQuad');
+        container.appendChild(leaf);
+      }
+    }
+
+    scene.addEventListener('targetFound', function(e){
+      var id = e.target.getAttribute('data-card-id');
+      __log('>>> 识别: ' + (id || '?'), 'ok');
+      var c = cardsById[id];
+      var f = document.getElementById('found');
+      if (f) { f.style.display = 'block'; f.textContent = '✅ ' + (c ? c.title : ('已识别：' + id)); }
+      var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'none';
+      setTimeout(function(){ var ff = document.getElementById('found'); if (ff) ff.style.display = 'none'; }, 2500);
+      spawnLeaves(id);
+      if (c) {
+        if (speechPrimed) speak(c.intro);
+        if (c.hasVideo) { var m = getVideoMedia(id); if (m) { try { var p = m.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {} } }
+      }
+    });
+    scene.addEventListener('targetLost', function(e){
+      var id = e.target.getAttribute('data-card-id') || '';
+      __log('目标丢失: ' + id, 'warn');
+      var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'block';
+      var f = document.getElementById('found'); if (f) f.style.display = 'none';
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      var c = cardsById[id];
+      if (c && c.hasVideo) { var m = getVideoMedia(id); if (m) { try { m.pause(); } catch (e) {} } }
+    });
+
+    // 点击委托：语音解说
+    scene.addEventListener('click', function(e){
+      var t = e.target.closest('.clickable'); if (!t) return;
+      var action = t.getAttribute('data-action');
+      var cardId = t.getAttribute('data-card-id');
+      if (action === 'narrate' && cardId && cardsById[cardId]) {
+        primeSpeech();
+        speak(cardsById[cardId].intro);
+        __log('语音解说: ' + cardId, 'ok');
+      }
+    });
+
+    // 组件自检（调试）
+    setTimeout(function(){
       var c = scene.components['mindar-image'];
       __log('mindar组件: ' + (c ? '存在' : '不存在'), c ? 'ok' : 'fail');
       if (c) {
@@ -233,31 +382,15 @@
       }
     }, 3000);
 
-    // 银杏叶
-    setTimeout(function() {
-      var leaves = document.getElementById('leaves');
-      if (!leaves) return;
-      var colors = ['#f5c542', '#e8a317', '#f0d060', '#d4a017'];
-      for (var i = 0; i < 15; i++) {
-        var leaf = document.createElement('a-plane');
-        var x = (Math.random()-0.5)*1.4, y = 0.5+Math.random()*0.4, z = 0.05+Math.random()*0.1;
-        leaf.setAttribute('width','0.09'); leaf.setAttribute('height','0.09');
-        leaf.setAttribute('position', x+' '+y+' '+z);
-        leaf.setAttribute('rotation', '0 0 '+(Math.random()*360));
-        leaf.setAttribute('material', 'color:'+colors[i%4]+'; side:double; transparent:true; opacity:0.92');
-        leaf.setAttribute('animation', 'property:position; to:'+(x+(Math.random()-0.5)*0.3)+' -0.45 '+z+'; loop:true; dur:'+(3500+Math.random()*2500)+'; delay:'+(Math.random()*5000)+'; easing:easeInQuad');
-        leaves.appendChild(leaf);
+    // 30s 超时：仅当 arReady 未触发时报警（arReady 后等待用户点"开始体验"不算超时）
+    setTimeout(function(){
+      if (arReadyFired) return;
+      var ld = document.getElementById('loading');
+      if (ld && ld.style.display !== 'none') {
+        ld.innerHTML = '<h1 style="color:#ff9999">启动超时</h1><p>AR 未就绪，请点右上角"显示日志"并截图反馈</p>';
+        document.getElementById('debug').style.display = 'block';
       }
-    }, 1000);
-
-    scene.addEventListener('click', function(e) {
-      var t = e.target.closest('.clickable');
-      if (t) {
-        document.getElementById('panel-title').textContent = t.getAttribute('data-title');
-        document.getElementById('panel-content').textContent = t.getAttribute('data-content');
-        document.getElementById('info-panel').style.display = 'block';
-      }
-    });
+    }, 30000);
     }
   </script>
 </body>
