@@ -215,6 +215,7 @@
   <script>
     function initARLogic() {
     __log('主脚本执行', 'ok');
+    __log('BUILD: xiaoyou-4fix-2 ([wander]入口+入场日志)', 'ok');
     __log('MINDAR: ' + (typeof window.MINDAR !== 'undefined' ? '已加载' : '未加载'), typeof window.MINDAR !== 'undefined' ? 'ok' : 'fail');
     __log('AFRAME: ' + (typeof AFRAME !== 'undefined' ? '已加载' : '未加载'), typeof AFRAME !== 'undefined' ? 'ok' : 'fail');
 
@@ -727,9 +728,11 @@
         starsEntered[id] = true;
         var root = document.getElementById('card-' + id);
         // wander 是 a-entity 上的属性而非标签，须用属性选择器 [wander] 才会选中这些星
+        var entered = 0;
         if (root) root.querySelectorAll('[wander]').forEach(function(el){
-          var w = el.components.wander; if (w && w.enter) w.enter();
+          var w = el.components.wander; if (w && w.enter){ w.enter(); entered++; }
         });
+        __log('入场动画: ' + entered + ' 颗星升起', entered ? 'ok' : 'fail');
       }
       if (c) {
         if (speechPrimed) speak('intro-' + c.id, c.intro);
