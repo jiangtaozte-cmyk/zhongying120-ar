@@ -227,7 +227,9 @@
         width:  { type: 'number', default: 1.0 },   // AR 世界宽度（米）
         wrap:   { type: 'number', default: 0 },      // 每行最大字符数，0=不换行
         weight: { type: 'number', default: 400 },   // 楷体/书法字形仅 400，默认不再粗体
-        pad:    { type: 'number', default: 40 }
+        pad:    { type: 'number', default: 40 },
+        outline:     { type: 'string', default: '' },   // 描边色；空=不描边（浅色字加一圈深色边，米色卡面上才清晰）
+        outlineWidth:{ type: 'number', default: 6 }     // 相对 200px 字号的描边粗细
       },
       update: function () {
         var d = this.data;
@@ -256,8 +258,14 @@
         c.width  = Math.max(2, Math.ceil(maxW + pad * 2));
         c.height = Math.max(2, Math.ceil(lh * lines.length + pad * 2));
         ctx.font = d.weight + ' ' + fs + 'px ' + fam;
-        ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillStyle = d.color;
-        for (var i = 0; i < lines.length; i++) ctx.fillText(lines[i], c.width / 2, pad + lh / 2 + i * lh);
+        ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+        var doOutline = d.outline ? true : false;
+        ctx.fillStyle = d.color;
+        if (doOutline) { ctx.strokeStyle = d.outline; ctx.lineWidth = d.outlineWidth; ctx.lineJoin = 'round'; }
+        for (var i = 0; i < lines.length; i++) {
+          if (doOutline) ctx.strokeText(lines[i], c.width / 2, pad + lh / 2 + i * lh);
+          ctx.fillText(lines[i], c.width / 2, pad + lh / 2 + i * lh);
+        }
         var tex = new THREE.CanvasTexture(c);
         tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
         var mesh = new THREE.Mesh(
@@ -279,11 +287,12 @@
         var c = document.createElement('canvas'); c.width = c.height = 256;
         var ctx = c.getContext('2d');
         var cx = 128, cy = 128, R = 118, r = 50;
-        // 径向柔光
-        var glow = ctx.createRadialGradient(cx, cy, 8, cx, cy, R + 26);
-        glow.addColorStop(0, 'rgba(255,246,216,0.95)');
-        glow.addColorStop(0.42, 'rgba(245,197,66,0.5)');
-        glow.addColorStop(1, 'rgba(245,197,66,0)');
+        // 深色软晕（画在星星之下）：米色卡面上金字靠"影"而非"光"来托起、显分离
+        // 在星星轮廓附近形成一圈暗，向外淡出，让金色从米色卡面"浮起"
+        var glow = ctx.createRadialGradient(cx, cy, R * 0.55, cx, cy, R + 34);
+        glow.addColorStop(0, 'rgba(44,24,16,0)');
+        glow.addColorStop(0.5, 'rgba(44,24,16,0.55)');
+        glow.addColorStop(1, 'rgba(44,24,16,0)');
         ctx.fillStyle = glow; ctx.fillRect(0, 0, 256, 256);
         // 五角星（上顶点朝上）
         ctx.beginPath();
@@ -296,7 +305,7 @@
         ctx.closePath();
         ctx.fillStyle = d.color; ctx.fill();
         ctx.lineJoin = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = '#c97a12'; ctx.stroke();
-        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,246,216,0.85)'; ctx.stroke();
+        ctx.lineWidth = 3.5; ctx.strokeStyle = '#3a2415'; ctx.stroke();
         var tex = new THREE.CanvasTexture(c);
         tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
         var mesh = new THREE.Mesh(
@@ -573,7 +582,7 @@
         return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0042; r: 0.13">'
           + '<a-entity star="size: 0.24; color: #f5c542" '
             + 'animation="property: scale; from: 1 1 1; to: 1.18 1.18 1; dir: alternate; loop: true; dur: '+(1400+i*120)+'; easing: easeInOutQuad"></a-entity>'
-          + '<a-entity cjktext="value: '+a.name+'; color: #2c1810; width: 0.22" position="0 -0.14 0.002"></a-entity>'
+          + '<a-entity cjktext="value: '+a.name+'; color: #f5e6c8; width: 0.24; outline: #3a2415; outlineWidth: 7" position="0 -0.14 0.002"></a-entity>'
           + '</a-entity>';
       }).join('');
     }
