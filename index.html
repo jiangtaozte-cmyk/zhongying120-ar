@@ -251,6 +251,45 @@
       }
     });
 
+    // ---- 星光：canvas 绘制的发光五角星纹理贴在平面上（替代纯色 a-plane 方块）----
+    AFRAME.registerComponent('star', {
+      schema: {
+        size:  { type: 'number', default: 0.24 },   // AR 世界尺寸（米）
+        color: { type: 'string', default: '#f5c542' }
+      },
+      update: function () {
+        var d = this.data;
+        var c = document.createElement('canvas'); c.width = c.height = 256;
+        var ctx = c.getContext('2d');
+        var cx = 128, cy = 128, R = 118, r = 50;
+        // 径向柔光
+        var glow = ctx.createRadialGradient(cx, cy, 8, cx, cy, R + 26);
+        glow.addColorStop(0, 'rgba(255,246,216,0.95)');
+        glow.addColorStop(0.42, 'rgba(245,197,66,0.5)');
+        glow.addColorStop(1, 'rgba(245,197,66,0)');
+        ctx.fillStyle = glow; ctx.fillRect(0, 0, 256, 256);
+        // 五角星（上顶点朝上）
+        ctx.beginPath();
+        for (var i = 0; i < 10; i++) {
+          var ang = -Math.PI / 2 + i * Math.PI / 5;
+          var rad = (i % 2 === 0) ? R : r;
+          var px = cx + rad * Math.cos(ang), py = cy + rad * Math.sin(ang);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fillStyle = d.color; ctx.fill();
+        ctx.lineJoin = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = '#c97a12'; ctx.stroke();
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,246,216,0.85)'; ctx.stroke();
+        var tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
+        var mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(d.size, d.size),
+          new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
+        );
+        this.el.setObject3D('mesh', mesh);
+      }
+    });
+
     // ---- 卡片数据（下标 = targetIndex = .mind 内图片编译顺序，硬约束）----
     var cards = [
       { id:'chengzhi',  title:'创校承志',   era:'1904',      hasVideo:false,
@@ -290,10 +329,11 @@
       { id:"youbenchang", name:"游本昌", title:"表演艺术家",
         bio:"游本昌（1933— ），表演艺术家。1951 年毕业于南京私立钟英中学，后入上海戏剧学院深造。因塑造电视剧《济公》形象家喻户晓，从艺数十载以戏载道。2014 年母校百十校庆时重返校园，朗诵《咏松》，为百姓心中难忘的荧屏记忆。" }
     ];
-    // 星光在卡面局部坐标 (x,y) 的位置（z 在前景）
+    // 星光在卡面局部坐标 (x,y) 的位置（z 在前景）；星座式排布，名字互不重叠
     var STARS = [
-      {x:-0.34,y:0.16},{x:-0.10,y:0.34},{x:-0.32,y:0.44},
-      {x:0.06,y:0.12},{x:0.24,y:0.30},{x:0.36,y:0.44}
+      {x:-0.30,y:0.34},{x:0.30,y:0.30},
+      {x:-0.14,y:0.02},{x:0.18,y:0.00},
+      {x:-0.34,y:-0.32},{x:0.10,y:-0.34}
     ];
 
     // ---- 校友多图探测 + 生平弹窗 ----
@@ -421,15 +461,14 @@
       }
     }
 
-    // ---- 星光墙（xiaoyou）星座 ----
+    // ---- 星光墙（xiaoyou）星座：发光五角星 + 名字（点击整颗星弹生平）----
     function starHtml(c){
       return ALUMNI.map(function(a, i){
         var s = STARS[i];
         return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09">'
-          + '<a-plane width="0.13" height="0.13" color="#f5c542" rotation="0 0 0" '
-            + 'material="side: double; transparent: true; opacity: 0.95; shader: flat" '
-            + 'animation="property: scale; from: 1 1 1; to: 1.22 1.22 1; dir: alternate; loop: true; dur: 1600; easing: easeInOutQuad"></a-plane>'
-          + '<a-entity cjktext="value: '+a.name+'; color: #2c1810; width: 0.44" position="0 -0.14 0.002"></a-entity>'
+          + '<a-entity star="size: 0.24; color: #f5c542" '
+            + 'animation="property: scale; from: 1 1 1; to: 1.18 1.18 1; dir: alternate; loop: true; dur: '+(1400+i*120)+'; easing: easeInOutQuad"></a-entity>'
+          + '<a-entity cjktext="value: '+a.name+'; color: #2c1810; width: 0.24" position="0 -0.15 0.002"></a-entity>'
           + '</a-entity>';
       }).join('');
     }
@@ -443,12 +482,12 @@
         // 相框
         + '<a-plane width="1.24" height="1.72" color="#2c1810" position="0 0 0.08" rotation="0 0 0" material="side: double; transparent: true; opacity: 0.92; shader: flat"></a-plane>'
         + '<a-plane width="1.16" height="1.64" color="#f5e6c8" position="0 0 0.082" rotation="0 0 0" material="side: double; transparent: true; opacity: 0.97; shader: flat"></a-plane>'
-        // 标题/年代（A-Frame a-text 无中文字形，改用 canvas 纹理 cjktext）
-        + '<a-entity cjktext="value: ' + c.title + '; color: #8b1a1a; width: 1.1" position="0 0.62 0.084"></a-entity>'
-        + '<a-entity cjktext="value: ' + c.era + '; color: #2c5f3f; width: 0.7" position="0 0.50 0.084"></a-entity>';
+        // 标题/年代（A-Frame a-text 无中文字形，改用 canvas 纹理 cjktext；宽度收窄避免过大）
+        + '<a-entity cjktext="value: ' + c.title + '; color: #8b1a1a; width: 0.62" position="0 0.66 0.084"></a-entity>'
+        + '<a-entity cjktext="value: ' + c.era + '; color: #2c5f3f; width: 0.42" position="0 0.56 0.084"></a-entity>';
       if (isStar) {
         h += starHtml(c)
-          + '<a-entity cjktext="value: 点击星辰 · 走近校友; color: #2c5f3f; width: 0.85" position="0 -0.12 0.084"></a-entity>';
+          + '<a-entity cjktext="value: 点击星辰 · 走近校友; color: #2c5f3f; width: 0.42" position="0 -0.62 0.084"></a-entity>';
       } else {
         h += visualHtml(c)
           + '<a-entity id="intro-' + c.id + '" cjktext="color: #2c1810; width: 1.05; wrap: 18" position="0 -0.24 0.084"></a-entity>'
@@ -467,7 +506,7 @@
       + 'mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1; uiLoading: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 1000; warmupTolerance: 3; missTolerance: 5" '
       + 'color-space="sRGB" renderer="colorManagement: true; physicallyCorrectLights: false" '
       + 'vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>'
-      + '<a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse; fuse: false"></a-camera>'
+      + '<a-camera position="0 0 0" look-controls="enabled: false"></a-camera>'
       + cards.map(cardEntity).join('')
       + '</a-scene>';
     document.getElementById('scene-container').innerHTML = sceneHtml;
@@ -540,18 +579,42 @@
       if (c && c.hasVideo) { var m = getVideoMedia(id); if (m) { try { m.pause(); } catch (e) {} } }
     });
 
-    // 点击委托：星光墙点星 → 校友生平；语音解说
-    scene.addEventListener('click', function(e){
-      var t = e.target.closest('.clickable'); if (!t) return;
-      var alumId = t.getAttribute('data-alum-id');
-      if (alumId !== null && alumId !== undefined) { openAlum(parseInt(alumId,10)); return; }
-      var action = t.getAttribute('data-action');
-      var cardId = t.getAttribute('data-card-id');
-      if (action === 'narrate' && cardId && cardsById[cardId]) {
-        primeSpeech();
-        speak(cardsById[cardId].intro);
-        __log('语音解说: ' + cardId, 'ok');
+    // 点击/触摸拾取：A-Frame cursor(rayOrigin:mouse) 在移动端 tap 不可靠，
+    // 改用手动 Raycaster：由归一化屏幕坐标求出射线，命中可见网格后沿 object3D 向上找 .clickable。
+    var _ray = new THREE.Raycaster();
+    var _ndc = new THREE.Vector2();
+    var _lastTap = 0;
+    function pickAt(cx, cy){
+      var now = Date.now(); if (now - _lastTap < 350) return; _lastTap = now;
+      var canvas = scene.canvas || document.querySelector('#scene-container canvas');
+      if (!canvas) return;
+      var rect = canvas.getBoundingClientRect();
+      _ndc.x = ((cx - rect.left) / rect.width) * 2 - 1;
+      _ndc.y = -((cy - rect.top) / rect.height) * 2 + 1;
+      var cam = scene.camera; if (!cam) return;
+      _ray.setFromCamera(_ndc, cam);
+      var hits = _ray.intersectObjects(scene.object3D, true);
+      for (var i = 0; i < hits.length; i++){
+        var o = hits[i].object, vis = true, w = o;
+        while (w){ if (!w.visible){ vis = false; break; } w = w.parent; }
+        if (!vis) continue;                                  // 跳过未跟踪(隐藏)的目标内容
+        var el = null; w = o;
+        while (w){ if (w.el){ el = w.el; break; } w = w.parent; }
+        if (!el) continue;
+        var t = el.closest('.clickable'); if (!t) continue;
+        var alumId = t.getAttribute('data-alum-id');
+        if (alumId !== null && alumId !== undefined) { openAlum(parseInt(alumId,10)); return; }
+        var action = t.getAttribute('data-action');
+        var cardId = t.getAttribute('data-card-id');
+        if (action === 'narrate' && cardId && cardsById[cardId]) {
+          primeSpeech(); speak(cardsById[cardId].intro);
+          __log('语音解说: ' + cardId, 'ok'); return;
+        }
       }
+    }
+    scene.addEventListener('click', function(e){ pickAt(e.clientX, e.clientY); });
+    scene.addEventListener('touchend', function(e){
+      var t = (e.changedTouches && e.changedTouches[0]); if (t) pickAt(t.clientX, t.clientY);
     });
 
     // 生平弹窗控件
