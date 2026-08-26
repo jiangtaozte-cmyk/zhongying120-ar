@@ -64,6 +64,24 @@
       color: #f5e6c8; background: rgba(44,95,63,0.92); padding: 8px 20px;
       border-radius: 16px; font-size: 13px; z-index: 10; display: none; white-space: nowrap;
     }
+    /* 校友生平弹窗（星光墙） */
+    #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 30; display: none; align-items: center; justify-content: center; padding: 24px; }
+    #overlay.show { display: flex; }
+    #panel { width: 100%; max-width: 420px; background: #f5e6c8; border-radius: 16px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.55); border: 3px solid #f5c542; animation: pop .28s cubic-bezier(.2,.9,.3,1.2); position: relative; }
+    @keyframes pop { from{ transform: scale(.85); opacity: 0 } to{ transform: scale(1); opacity: 1 } }
+    #panel .ph { background: linear-gradient(135deg,#8b1a1a,#5a1010); color: #f5c542; padding: 14px 18px; }
+    #panel .ph .num { font-size: 13px; opacity: .7; letter-spacing: 2px; }
+    #panel .ph .nm { font-size: 22px; font-weight: bold; letter-spacing: 2px; }
+    #panel .ph .tt { font-size: 12px; opacity: .85; margin-top: 2px; }
+    #panel .photo { width: 100%; aspect-ratio: 1/1; background: #e8d9b8 center/cover no-repeat; display: flex; align-items: center; justify-content: center; position: relative; }
+    #panel .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #photo-wrap { cursor: pointer; }
+    #p-count { position: absolute; top: 10px; right: 12px; background: rgba(0,0,0,.5); color: #fff; font-size: 12px; padding: 3px 10px; border-radius: 12px; letter-spacing: 1px; display: none; }
+    #panel .bio { padding: 16px 18px 18px; }
+    #panel .bio p { margin: 0; font-size: 14.5px; line-height: 1.85; color: #2c1810; }
+    #panel .actions { display: flex; gap: 10px; margin-top: 14px; }
+    #panel .btn { flex: 1; border: none; border-radius: 24px; padding: 10px 0; font-size: 14px; font-weight: bold; cursor: pointer; font-family: inherit; letter-spacing: 1px; }
+    #panel .x { position: absolute; top: 10px; right: 12px; color: #f5e6c8; font-size: 24px; cursor: pointer; line-height: 1; opacity: .8; z-index: 2; }
   </style>
 
   <script>
@@ -96,6 +114,28 @@
 
   <div id="scanning">📷 将镜头对准校庆纪念卡</div>
   <div id="found">✅ 已识别</div>
+
+  <!-- 校友生平弹窗（星光墙） -->
+  <div id="overlay">
+    <div id="panel">
+      <span class="x" id="close-x">×</span>
+      <div class="ph">
+        <div>
+          <div class="num" id="p-num">No. 01 / 06</div>
+          <div class="nm" id="p-name">—</div>
+          <div class="tt" id="p-title">—</div>
+        </div>
+      </div>
+      <div class="photo" id="photo-wrap"><img id="p-photo" alt="校友照片" /><div id="p-count"></div></div>
+      <div class="bio">
+        <p id="p-bio">—</p>
+        <div class="actions">
+          <button class="btn" id="narrate">🔊 语音解说</button>
+          <button class="btn" id="close">收起</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- 场景容器：JS动态创建a-scene，确保aframe加载后再初始化 -->
   <div id="scene-container"></div>
@@ -172,14 +212,93 @@
         intro:'1954 年定址秦淮九条巷曾公祠，青砖黛瓦间书声琅琅。2014 年恢复钟英校名，文脉绵延，古祠新学。' },
       { id:'fuming',    title:'恢复钟英',   era:'2014',      hasVideo:false,
         intro:'2014 年，「钟英」校名回归。六十载沧桑，钟阜育才之志不泯；古祠新学，薪火重燃。' },
-      { id:'xiaoyou',   title:'杰出校友',   era:'群星璀璨',  hasVideo:true,  vidW:0.92, vidH:0.52,
-        intro:'任新民两弹一星、吴良镛两院院士、刘西尧前教育部长、刘宇一画家、叶兆言作家、游本昌演员……钟阜毓秀，英才辈出。' },
+      { id:'xiaoyou',   title:'杰出校友',   era:'群星璀璨',  hasVideo:false, type:'starwall',
+        intro:'钟阜毓秀，群星璀璨。点击星辰，走近一位杰出校友，聆听他们的故事。' },
       { id:'xiaoxun',   title:'校训文化',   era:'勤朴诚毅',  hasVideo:false,
         intro:'勤以治事，朴以修身，诚以待人，毅以立志。四字校训，百廿传承，钟英学子立身之本。' }
     ];
     var cardsById = {};
     cards.forEach(function(c){ cardsById[c.id] = c; });
     __log('卡片数据: ' + cards.length + ' 张', 'ok');
+
+    // ★★★ targetIndex 映射 = .mind 内目标编译上传顺序（硬约束）★★★
+    //   生产(6卡).mind 编译顺序：chengzhi,xiqian,zenggongci,fuming,xiaoyou,xiaoxun → 0..5
+    //   测试期(当前 .mind 仅含 xiaoyou=0)：让 xiaoyou=0，原 index0 的 chengzhi 挪到 1，避免冲突
+    var TARGET_INDEX = { chengzhi:1, xiqian:2, zenggongci:3, fuming:4, xiaoyou:0, xiaoxun:5 };
+
+    // ---- 校友数据（xiaoyou 星光墙卡专用，与预览页一致）----
+    var ALUMNI = [
+      { id:"renxinmin", name:"任新民", title:"两弹一星元勋·航天专家",
+        bio:"任新民（1915—2017），航天技术与火箭发动机专家，「两弹一星」功勋奖章获得者。1934 年毕业于钟英中学高中部。中国液体火箭发动机、运载火箭与通信卫星工程的奠基人之一，被誉为中国航天「总总师」。以毕生之力为国人叩开太空之门，功勋卓著。" },
+      { id:"wuliangyong", name:"吴良镛", title:"两院院士·建筑学家",
+        bio:"吴良镛（1922— ），建筑学家与城市规划学家，中国科学院、中国工程院两院院士，国家最高科学技术奖得主，钟英培养的院士之一。他创立人居环境科学，主持北京菊儿胡同新四合院改造闻名于世，毕生致力于中国人居环境的改善与赓续。" },
+      { id:"liuxiyao", name:"刘西尧", title:"前教育部长·少将",
+        bio:"刘西尧（1916—2013），湖南长沙人，1933 年毕业于南京私立钟英中学。曾任中国人民解放军少将，参与中国首次原子弹试验并任副总指挥。后任教育部部长、国家教育委员会副主任，长期主管国家教育与人才培养，贡献深远。" },
+      { id:"liuyuyi", name:"刘宇一", title:"著名油画家",
+        bio:"刘宇一（1940— ），著名油画家，南京人，钟英中学校友。擅宏幅主题性历史油画，代表作《良宵》《良辰》《世纪大典》等陈列于人民大会堂等重要场所，以史诗笔触记录时代肖像，被誉为作品进入国家殿堂的当世画家。" },
+      { id:"yezhaoyan", name:"叶兆言", title:"当代作家",
+        bio:"叶兆言（1957— ），当代著名作家，南京人，钟英中学校友，南京文学的代表人物。长篇小说《一九三七年的爱情》与散文《南京人》等笔力深厚，满载六朝烟雨与金陵文脉，多次荣膺茅盾文学奖提名等重要文学奖项。" },
+      { id:"youbenchang", name:"游本昌", title:"表演艺术家",
+        bio:"游本昌（1933— ），表演艺术家。1951 年毕业于南京私立钟英中学，后入上海戏剧学院深造。因塑造电视剧《济公》形象家喻户晓，从艺数十载以戏载道。2014 年母校百十校庆时重返校园，朗诵《咏松》，为百姓心中难忘的荧屏记忆。" }
+    ];
+    // 星光在卡面局部坐标 (x,y) 的位置（z 在前景）
+    var STARS = [
+      {x:-0.34,y:0.16},{x:-0.10,y:0.34},{x:-0.32,y:0.44},
+      {x:0.06,y:0.12},{x:0.24,y:0.30},{x:0.36,y:0.44}
+    ];
+
+    // ---- 校友多图探测 + 生平弹窗 ----
+    var SIL = "data:image/svg+xml;utf8," + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">'
+      + '<rect width="400" height="400" fill="#e8d9b8"/>'
+      + '<circle cx="200" cy="160" r="78" fill="#8b1a1a"/>'
+      + '<path d="M70 400 Q200 250 330 400 Z" fill="#8b1a1a"/>'
+      + '<text x="200" y="392" font-family="SimHei" font-size="26" fill="#8b1a1a" text-anchor="middle">照片待补</text></svg>');
+    var EXTS=['.jpg','.jpeg','.png','.webp'];
+    var _photos=[], _pi=0, _timer=null, _ov=null;
+    function probe(base, cb){
+      var i=0;
+      (function next(){
+        if(i>=EXTS.length) return cb(null);
+        var url=base+EXTS[i++], im=new Image();
+        im.onload=function(){ cb(url); };
+        im.onerror=function(){ next(); };
+        im.src=url;
+      })();
+    }
+    function collectPhotos(id){
+      return new Promise(function(res){
+        var bases=['assets/img/xiaoyou/'+id];
+        for(var k=2;k<=5;k++) bases.push('assets/img/xiaoyou/'+id+'-'+k);
+        var idx=0, urls=[];
+        (function nb(){ if(idx>=bases.length) return res(urls); probe(bases[idx++], function(u){ if(u) urls.push(u); nb(); }); })();
+      });
+    }
+    function showPhoto(i){
+      if(!_photos.length) return;
+      _pi=(i+_photos.length)%_photos.length;
+      var img=document.getElementById('p-photo');
+      img.onerror=function(){ img.src=SIL; img.onerror=null; };
+      img.src=_photos[_pi];
+      var c=document.getElementById('p-count');
+      if(_photos.length>1){ c.style.display='block'; c.textContent=(_pi+1)+' / '+_photos.length; }
+      else c.style.display='none';
+    }
+    function startAuto(){ stopAuto(); if(_photos.length>1) _timer=setInterval(function(){ showPhoto(_pi+1); },4000); }
+    function stopAuto(){ if(_timer){ clearInterval(_timer); _timer=null; } }
+    function openAlum(i){
+      var a=ALUMNI[i]; if(!a) return;
+      if(!_ov) _ov=document.getElementById('overlay');
+      document.getElementById('p-num').textContent='No. '+String(i+1).padStart(2,'0')+' / '+ALUMNI.length;
+      document.getElementById('p-name').textContent=a.name;
+      document.getElementById('p-title').textContent=a.title;
+      document.getElementById('p-bio').textContent=a.bio;
+      _ov.classList.add('show');
+      collectPhotos(a.id).then(function(urls){ _photos=urls.length?urls:[SIL]; showPhoto(0); startAuto(); });
+      primeSpeech(); speak(a.bio);
+      __log('查看校友: '+a.name,'ok');
+    }
+    function closeAlum(){ stopAuto(); if(_ov)_ov.classList.remove('show'); if(window.speechSynthesis) speechSynthesis.cancel(); }
 
     // ---- TTS（Web Speech API）----
     var speechPrimed = false, zhVoice = null;
@@ -256,9 +375,23 @@
       }
     }
 
+    // ---- 星光墙（xiaoyou）星座 ----
+    function starHtml(c){
+      return ALUMNI.map(function(a, i){
+        var s = STARS[i];
+        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09">'
+          + '<a-plane width="0.13" height="0.13" color="#f5c542" rotation="0 0 0" '
+            + 'material="side: double; transparent: true; opacity: 0.95; shader: flat" '
+            + 'animation="property: scale; from: 1 1 1; to: 1.22 1.22 1; dir: alternate; loop: true; dur: 1600; easing: easeInOutQuad"></a-plane>'
+          + '<a-text value="'+a.name+'" color="#2c1810" align="center" width="0.44" position="0 -0.14 0.002" rotation="0 0 0"></a-text>'
+          + '</a-entity>';
+      }).join('');
+    }
+
     // ---- 单卡实体模板 ----
     function cardEntity(c, i){
-      return '<a-entity mindar-image-target="targetIndex: ' + i + '" data-card-id="' + c.id + '" id="card-' + c.id + '">'
+      var isStar = c.type === 'starwall';
+      var h = '<a-entity mindar-image-target="targetIndex: ' + (TARGET_INDEX[c.id]||0) + '" data-card-id="' + c.id + '" id="card-' + c.id + '">'
         + '<a-entity light="type: ambient; color: #fff5e6; intensity: 0.85"></a-entity>'
         + '<a-entity light="type: directional; color: #f5c542; intensity: 0.9" position="2 3 2"></a-entity>'
         // 相框
@@ -268,20 +401,24 @@
         + '<a-text value="' + c.title + '" color="#8b1a1a" align="center" width="1.1" position="0 0.62 0.084" rotation="0 0 0" '
           + 'animation="property: opacity; from: 0; to: 1; dur: 600; easing: easeOutQuad"></a-text>'
         + '<a-text value="' + c.era + '" color="#2c5f3f" align="center" width="0.7" position="0 0.50 0.084" rotation="0 0 0" '
-          + 'animation="property: opacity; from: 0; to: 1; delay: 200; dur: 600"></a-text>'
-        // 视觉块
-        + visualHtml(c)
-        // ~120字介绍（value 由 JS setAttribute 设值，避免属性转义问题）
-        + '<a-text id="intro-' + c.id + '" color="#2c1810" align="center" width="1.05" wrapCount="22" position="0 -0.24 0.084" rotation="0 0 0" '
-          + 'animation="property: opacity; from: 0; to: 1; delay: 400; dur: 600"></a-text>'
-        // 解说按钮
-        + '<a-plane class="clickable" width="0.52" height="0.16" color="#8b1a1a" position="0 -0.62 0.084" rotation="0 0 0" '
-          + 'material="side: double; shader: flat" data-action="narrate" data-card-id="' + c.id + '" '
-          + 'animation="property: scale; from: 1 1 1; to: 0.94 0.94 1; dir: alternate; dur: 200; startEvents: click">'
-          + '<a-text value="🔊 语音解说" color="#f5e6c8" align="center" width="0.48" position="0 0 0.004" rotation="0 0 0"></a-text>'
-        + '</a-plane>'
-        + '<a-entity id="leaves-' + c.id + '"></a-entity>'
-      + '</a-entity>';
+          + 'animation="property: opacity; from: 0; to: 1; delay: 200; dur: 600"></a-text>';
+      if (isStar) {
+        h += starHtml(c)
+          + '<a-text value="点击星辰 · 走近校友" color="#2c5f3f" align="center" width="0.85" position="0 -0.12 0.084" rotation="0 0 0" '
+            + 'animation="property: opacity; from: 0; to: 1; delay: 400; dur: 600"></a-text>';
+      } else {
+        h += visualHtml(c)
+          + '<a-text id="intro-' + c.id + '" color="#2c1810" align="center" width="1.05" wrapCount="22" position="0 -0.24 0.084" rotation="0 0 0" '
+            + 'animation="property: opacity; from: 0; to: 1; delay: 400; dur: 600"></a-text>'
+          + '<a-plane class="clickable" width="0.52" height="0.16" color="#8b1a1a" position="0 -0.62 0.084" rotation="0 0 0" '
+            + 'material="side: double; shader: flat" data-action="narrate" data-card-id="' + c.id + '" '
+            + 'animation="property: scale; from: 1 1 1; to: 0.94 0.94 1; dir: alternate; dur: 200; startEvents: click">'
+            + '<a-text value="🔊 语音解说" color="#f5e6c8" align="center" width="0.48" position="0 0 0.004" rotation="0 0 0"></a-text>'
+          + '</a-plane>';
+      }
+      h += '<a-entity id="leaves-' + c.id + '"></a-entity>'
+        + '</a-entity>';
+      return h;
     }
 
     var sceneHtml = '<a-scene id="ar-scene" '
@@ -361,9 +498,11 @@
       if (c && c.hasVideo) { var m = getVideoMedia(id); if (m) { try { m.pause(); } catch (e) {} } }
     });
 
-    // 点击委托：语音解说
+    // 点击委托：星光墙点星 → 校友生平；语音解说
     scene.addEventListener('click', function(e){
       var t = e.target.closest('.clickable'); if (!t) return;
+      var alumId = t.getAttribute('data-alum-id');
+      if (alumId !== null && alumId !== undefined) { openAlum(parseInt(alumId,10)); return; }
       var action = t.getAttribute('data-action');
       var cardId = t.getAttribute('data-card-id');
       if (action === 'narrate' && cardId && cardsById[cardId]) {
@@ -372,6 +511,14 @@
         __log('语音解说: ' + cardId, 'ok');
       }
     });
+
+    // 生平弹窗控件
+    document.getElementById('close').addEventListener('click', closeAlum);
+    document.getElementById('close-x').addEventListener('click', closeAlum);
+    document.getElementById('narrate').addEventListener('click', function(){ primeSpeech(); speak(document.getElementById('p-bio').textContent); });
+    document.getElementById('photo-wrap').addEventListener('click', function(e){ e.stopPropagation(); showPhoto(_pi+1); });
+    var ovEl = document.getElementById('overlay');
+    if (ovEl) ovEl.addEventListener('click', function(e){ if(e.target===ovEl) closeAlum(); });
 
     // 组件自检（调试）
     setTimeout(function(){

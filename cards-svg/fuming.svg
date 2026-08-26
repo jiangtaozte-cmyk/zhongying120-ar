@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1680" viewBox="0 0 1200 1680">
+  <rect x="0" y="0" width="1200" height="1680" fill="#f5e6c8"/>
+  <!-- 边框 -->
+  <rect x="40" y="40" width="1120" height="1600" fill="none" stroke="#8b1a1a" stroke-width="18"/>
+  <rect x="66" y="66" width="1068" height="1548" fill="none" stroke="#f5c542" stroke-width="5"/>
+  <rect x="54" y="54" width="24" height="24" transform="rotate(45 66 66)" fill="#f5c542" stroke="#8b1a1a" stroke-width="2"/><rect x="1122" y="54" width="24" height="24" transform="rotate(45 1134 66)" fill="#f5c542" stroke="#8b1a1a" stroke-width="2"/><rect x="54" y="1602" width="24" height="24" transform="rotate(45 66 1614)" fill="#f5c542" stroke="#8b1a1a" stroke-width="2"/><rect x="1122" y="1602" width="24" height="24" transform="rotate(45 1134 1614)" fill="#f5c542" stroke="#8b1a1a" stroke-width="2"/>
+  <!-- 页眉 -->
+  <text x="600" y="150" font-family="SimHei" font-size="46" font-weight="bold" fill="#8b1a1a" text-anchor="middle">南京市钟英中学</text>
+  <text x="600" y="196" font-family="SimHei" font-size="30" fill="#2c5f3f" text-anchor="middle">百廿校庆 · 1904 — 2024</text>
+  <line x1="240" y1="222" x2="960" y2="222" stroke="#f5c542" stroke-width="2"/>
+  <!-- 标题 / 大年代 -->
+  <text x="600" y="300" font-family="SimHei" font-size="72" font-weight="bold" fill="#8b1a1a" text-anchor="middle">恢复钟英</text>
+  <text x="600" y="402" font-family="SimHei" font-size="78" font-weight="bold" fill="#e8a317" stroke="#8b1a1a" stroke-width="1.5" text-anchor="middle">2014</text>
+  <text x="600" y="446" font-family="SimHei" font-size="26" fill="#2c5f3f" text-anchor="middle">复名·薪传</text>
+  <!-- 中心插画（470..1240）-->
+  <g>
+    <!-- 帷幕 -->
+    <path d="M200 500 L200 1240 L360 1180 L360 520 Z" fill="#8b1a1a" opacity="0.92" stroke="#f5c542" stroke-width="2"/>
+    <path d="M1000 520 L1000 1180 L1160 1240 L1160 500 Z" fill="#8b1a1a" opacity="0.92" stroke="#f5c542" stroke-width="2"/>
+    <circle cx="360" cy="520" r="14" fill="#f5c542"/><circle cx="840" cy="520" r="14" fill="#f5c542"/>
+    <!-- 牌匾 -->
+    <rect x="300" y="620" width="600" height="380" rx="14" fill="#8b1a1a" stroke="#f5c542" stroke-width="10"/>
+    <rect x="330" y="650" width="540" height="320" fill="none" stroke="#e8a317" stroke-width="2"/>
+    <text x="600" y="880" font-family="SimHei" font-size="200" font-weight="bold" fill="#f5c542" text-anchor="middle">钟英</text>
+    <!-- 飘带 -->
+    <path d="M300 1010 Q420 1080 360 1180" fill="none" stroke="#f5c542" stroke-width="6"/>
+    <path d="M900 1010 Q780 1080 840 1180" fill="none" stroke="#f5c542" stroke-width="6"/>
+    <!-- 钉 -->
+    <circle cx="340" cy="660" r="10" fill="#f5c542"/><circle cx="860" cy="660" r="10" fill="#f5c542"/>
+  </g>
+  <!-- 校训条 -->
+  <text x="420" y="1305" font-family="SimHei" font-size="40" fill="#2c5f3f" text-anchor="middle">勤</text><text x="540" y="1305" font-family="SimHei" font-size="40" fill="#2c5f3f" text-anchor="middle">朴</text><text x="660" y="1305" font-family="SimHei" font-size="40" fill="#2c5f3f" text-anchor="middle">诚</text><text x="780" y="1305" font-family="SimHei" font-size="40" fill="#2c5f3f" text-anchor="middle">毅</text><line x1="320" y1="1285" x2="880" y2="1285" stroke="#e8a317" stroke-width="2"/><line x1="320" y1="1325" x2="880" y2="1325" stroke="#e8a317" stroke-width="2"/>
+  <!-- 底部分隔与编号 -->
+  <line x1="120" y1="1350" x2="1080" y2="1350" stroke="#f5c542" stroke-width="1"/>
+  <text x="120" y="1400" font-family="SimHei" font-size="22" fill="#8b1a1a" font-weight="bold">钟英校史纪念卡</text>
+  <text x="120" y="1430" font-family="SimHei" font-size="18" fill="#2c5f3f">No. 04 / 06 · 恢复钟英</text>
+  <!-- 二维码（同一 URL）-->
+  <text x="1010" y="1395" font-family="SimHei" font-size="20" fill="#8b1a1a" text-anchor="middle">扫码体验 AR</text>
+  <rect x="905" y="1410" width="210" height="210" fill="#f5e6c8" stroke="#8b1a1a" stroke-width="3"/>
+  <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaQAAAGkCAYAAAB+TFE1AAAAAklEQVR4AewaftIAAA0PSURBVO3BsbFgN7AdwMOpjQgOUkDICIFwEAYzoE05XyYNlHjrz9N29x9///XnPwGA/2UVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBX3k0xwr/nXN3Xsyx8uLcnZ9sjpUX5+50MsfKl87d+dIcKy/O3fnJ5ljhv3PuzosKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANDAr3zs3J3fyRwrncyx0sm5O1+aY+XFuTtfOnfnxRwrL+ZYeXHuzotzd/h35+78TuZY+VIFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGjgV5qZY6WTc3f478yx0skcK186d+fFuTudzLHy4tydF3OsvDh35yebY6WTc3c6qQBAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADfwKP8q5O53MsfLi3J0vzbHyk82x8uLcnRdzrHxpjpUX5+7A/1UBgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABr4FX6UOVZenLvzOzl358UcK52cu/Olc3dezLHSyRwrL87d4eeoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgAN/Eoz5+7w787deTHHypfO3elkjpVO5lh5ce7OizlWXpy78+LcnS/NsfLi3J2f7Nwd/l0FABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGjgVz42xwr/nTlWXpy782KOlS/NsfLi3J0vnbvzYo6VF+fuvJhj5cW5Oy/mWHlx7s6LOVZenLvzYo6VF+fufGmOFf47FQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggT/+/uvPfwL/Y46Vn+zcnRdzrHzp3B3+3RwrL87d4f9fFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggV95NMfKi3N3vjTHCv/u3J2f7NydF3OsvDh358UcKy/mWHlx7s7v5NydF3OsfOncnS/NsfLi3J0Xc6x0cu7OiwoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0MCvPDp358UcKy/O3Xlx7s6LOVa+dO4O/+7cnRdzrHxpjpUX5+68mGPlS3OsvDh350tzrHzp3J3fyRwrXzp3p5MKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANDAH3//9ec/eTDHyotzd17MsfLi3J0vzbHyk52708kcK186d+fFHCsvzt3hvzPHSifn7nxpjpXfybk7LyoA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAN//P3Xn//kQ3OsdHLuTidzrLw4d+fFHCtfOnfnxRwrXzp35yebY+XFuTsv5lh5ce7OizlWXpy708kcK186d+dLc6x86dydL1UAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAZ+5dEcK186d+fFHCsv5ljh352786Vzd17MsfKlOVZenLvzYo6VF+fu8O/mWHlx7s7v5NydF3OsdFIBgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABr4lUfn7vxOzt350hwrncyx8qVzd740x8qLc3c6mWPldzLHyotzd17MsfLi3J0Xc6x8aY6VF+fuvDh3p5MKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANDArzyaY+VL5+68OHfnS3OsfOncnRdzrHzp3J0Xc6x86dydL82x8uLcnRfn7ryYY6WTOVa+dO7OizlWXpy782KOlRfn7vDfqQBAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADfzKx87deTHHyotzd17MsfKlc3c6OXenkzlWXpy782KOlRfn7ryYY+XFuTsvzt15McfKi3N3Oplj5cW5Oy/mWHlx7s6LOVZenLvz4tydF3OsvDh358UcKy/O3XlRAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANBABQAa+OPvv/78J7+ROVZenLvzYo6VF+fuvJhj5Uvn7nQyx8qLc3dezLHypXN3vjTHypfO3Xkxx8qLc3dezLHCvzt35yerAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgAN/MqjOVZ+snN3vnTuzos5Vl6cu/NijpUXc6y8OHfnxRwrL87deTHHypfO3Xkxx0on5+78ZOfufGmOlRfn7ryYY+XFuTsv5lh5ce7OizlWXpy786ICAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADTwK4/O3Xkxx8qXzt350hwrXzp3p5Nzd7507s6Xzt15MccK/26OlS/NsfLi3J1O5lh5ce7OizlWficVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBP/7+689/0sgcK186d+d3MsfKi3N3vjTHyotzd/h3c6y8OHfnJ5tj5cW5O53MsfKTnbvzpQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0MCvPJpj5cW5O186d6eTOVZenLvzYo6VTuZY+dIcKy/O3fnSHCsvzt15McfKTzbHyotzd36yOVZenLvzYo6VF+fufGmOlRfn7ryoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgAN/PH3X3/+kwdzrLw4d+dLc6y8OHfnxRwrL87d+dIcKy/O3Xkxx8qLc3e+NMfKl87d+dIcKy/O3Xkxx8rv5NydF3OsvDh358UcK52cu/OTVQCggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABn6lmTlWXpy708kcKy/O3fnSHCtfmmPlxbk7L87deTHHSifn7ryYY+XFuTsv5lh5ce7OizlWOjl3p5NzdzqZY+VL5+68qABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADfxKM+fu/GTn7vxk5+58aY6VF+fuvDh358UcKy/O3Xkxx8qLc3dezLHy4tydL52782KOlRdzrLw4d+fFHCsvzt3pZI6Vn6wCAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADTwx99//flPHsyx8pOdu/NijpUvnbvTyRwrXzp358UcKy/O3fnSHCsvzt15McdKJ+fudDLHyu/k3J0vzbHypXN3XlQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAb++PuvP/8JP8YcKy/O3eHfzbHyk52786U5Vr507s6LOVZenLvTyRwrL87deTHHypfO3flSBQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBo4FcezbHCf+fcnS/NsfKTnbvzYo6VL52782KOlRfn7ryYY+XFuTtfOnfnxRwrncyx8uLcHf47FQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggV/52Lk7v5M5Vn4n5+58aY6VF+fuvJhjpZM5Vl6cu/Olc3d+J+fudDLHypfO3emkAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA08CvNzLHSybk7P9m5O/x35lj50rk7P9kcK53MsfKTnbvTyRwrL87deVEBgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABr4Ffh/MMdKJ3OsvDh358UcKy/O3Xkxx8rv5NydF3OsfOncnRdzrLw4d+fFHCsvzt15McdKJxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIFf4Uc5d+fFHCsvzt15ce7OizlWvnTuzos5Vl6cu/Olc3dezLHy4tydL82x8mKOlRfn7ryYY6WTOVb4dxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIFfaebcHf475+50cu7OizlWvnTuTidzrHxpjpUX5+68OHeH/z1zrPxkFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggV/52Bwr/HfmWOnk3J2fbI6VTs7deTHHyk82x8qXzt35yc7d+Z1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAG/vj7rz//CQD8L6sAQAMVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA38H+LQEvWXboJHAAAAAElFTkSuQmCC" x="912" y="1417" width="196" height="196"/>
+</svg>
