@@ -455,10 +455,10 @@
         _photos=urls.length?urls:[SIL];
         showPhoto(0); startAuto();
       });
-      primeSpeech(); speak(a.bio);
+      primeSpeech(); _alumId = a.id; speak('alum-' + a.id, a.bio);
       __log('查看校友: '+a.name,'ok');
     }
-    function closeAlum(){ stopAuto(); if(_ov)_ov.classList.remove('show'); if(window.speechSynthesis) speechSynthesis.cancel(); }
+    function closeAlum(){ stopAuto(); stopCurAudio(); if(_ov)_ov.classList.remove('show'); if(window.speechSynthesis) speechSynthesis.cancel(); }
 
     // ---- TTS（Web Speech API）----
     var speechPrimed = false, zhVoice = null;
@@ -473,18 +473,42 @@
       setTimeout(pickZhVoice, 1200);          // 部分引擎语音就绪较慢，再探一次
       setTimeout(pickZhVoice, 3500);
     }
-    function speak(text){
-      __log('TTS调用 ss=' + !!window.speechSynthesis + ' primed=' + speechPrimed + ' len=' + (text ? String(text).length : -1), 'ok');
-      if (!window.speechSynthesis || !speechPrimed || !text) return;
+    var _curAud = null, _alumId = null;
+    var SIL_WAV='data:audio/wav;base64,UklGRmQfAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YUAfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+    function stopCurAudio(){ if(_curAud){ try{_curAud.pause();}catch(e){} try{_curAud.currentTime=0;}catch(e){} _curAud=null; } }
+    function webSpeak(text){
+      __log('TTS调用(web) ss=' + !!window.speechSynthesis + ' primed=' + speechPrimed + ' len=' + (text ? String(text).length : -1), 'ok');
+      if (!window.speechSynthesis || !speechPrimed || !text) { __log('TTS: （web 不可用）ss/primed 不满足', 'fail'); return; }
       try {
         speechSynthesis.cancel();
         var u = new SpeechSynthesisUtterance(text);
         u.lang = 'zh-CN'; u.rate = 0.95; u.pitch = 1;
-        // 仅在 zhVoice 仍属于当前可用引擎时才指定，避免挂到失效 voice 导致无声
         if (zhVoice) { var vs = speechSynthesis.getVoices() || []; if (vs.indexOf(zhVoice) >= 0) u.voice = zhVoice; }
         speechSynthesis.speak(u);
         __log('TTS: ' + text.slice(0, 10) + '…', 'ok');
       } catch (e) { __log('TTS失败: ' + e.message, 'fail'); }
+    }
+    // 通用方案：优先播放 assets/audio/<key>.mp3（微信内置 webview 也能出声）；缺失/被拦截才回退 Web Speech
+    function speak(key, text){
+      var src = 'assets/audio/' + key + '.mp3';
+      var aud = new Audio(src);
+      aud.setAttribute('playsinline', '');
+      aud.preload = 'auto';
+      var done = false;
+      function useAudio(){ done = true; stopCurAudio(); _curAud = aud; __log('TTS[音频] ' + key, 'ok'); }
+      function fallback(reason){
+        if (done) return; done = true;
+        __log('TTS[' + reason + '] ' + key, 'warn');
+        webSpeak(text);
+      }
+      aud.addEventListener('error', function(){ fallback('文件缺失'); }, { once:true });
+      aud.play().then(useAudio).catch(function(){
+        setTimeout(function(){ if (done) return; aud.play().then(useAudio).catch(function(){ fallback('自动播放被拦截'); }); }, 180);
+      });
+    }
+    // 在用户手势内播放一次静音，解锁 webview 的 HTML5 音频权限（微信内置需要）
+    function primeAudio(){
+      try { var a = new Audio(SIL_WAV); a.setAttribute('playsinline',''); a.loop = false; var p = a.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {}
     }
     // 在用户手势内调用一次空播，解锁 iOS SpeechSynthesis（之后才可程序化 speak）
     function primeSpeech(){
@@ -497,7 +521,7 @@
     var startBtn = document.getElementById('start-btn');
     var arReadyFired = false;
     startBtn.addEventListener('click', function(){
-      primeSpeech();                                   // 手势内解锁 TTS
+      primeSpeech(); primeAudio();                      // 手势内解锁 TTS + HTML5 音频（微信）
       var ld = document.getElementById('loading'); if (ld) ld.style.display = 'none';
       var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'block';
       __log('用户已开始体验', 'ok');
@@ -665,7 +689,7 @@
       setTimeout(function(){ var ff = document.getElementById('found'); if (ff) ff.style.display = 'none'; }, 2500);
       spawnLeaves(id);
       if (c) {
-        if (speechPrimed) speak(c.intro);
+        if (speechPrimed) speak('intro-' + c.id, c.intro);
         if (c.hasVideo) { var m = getVideoMedia(id); if (m) { try { var p = m.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {} } }
       }
     });
@@ -675,6 +699,7 @@
       var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'block';
       var f = document.getElementById('found'); if (f) f.style.display = 'none';
       if (window.speechSynthesis) window.speechSynthesis.cancel();
+      stopCurAudio();
       var c = cardsById[id];
       if (c && c.hasVideo) { var m = getVideoMedia(id); if (m) { try { m.pause(); } catch (e) {} } }
     });
@@ -725,7 +750,7 @@
       if (alumId !== null && alumId !== undefined){ __log('拾取: 校友#' + alumId, 'ok'); openAlum(parseInt(alumId,10)); return; }
       var action = el.getAttribute('data-action');
       var cardId = el.getAttribute('data-card-id');
-      if (action === 'narrate' && cardId && cardsById[cardId]){ primeSpeech(); speak(cardsById[cardId].intro); __log('语音解说:' + cardId, 'ok'); }
+      if (action === 'narrate' && cardId && cardsById[cardId]){ primeSpeech(); speak('intro-' + cardId, cardsById[cardId].intro); __log('语音解说:' + cardId, 'ok'); }
     }
     scene.addEventListener('click', function(e){ pickAt(e.clientX, e.clientY); });
     scene.addEventListener('touchend', function(e){ var t = (e.changedTouches && e.changedTouches[0]); if (t) pickAt(t.clientX, t.clientY); });
@@ -733,7 +758,7 @@
     // 生平弹窗控件
     document.getElementById('close').addEventListener('click', closeAlum);
     document.getElementById('close-x').addEventListener('click', closeAlum);
-    document.getElementById('narrate').addEventListener('click', function(){ primeSpeech(); speak(document.getElementById('p-bio').textContent); });
+    document.getElementById('narrate').addEventListener('click', function(){ primeSpeech(); if (_alumId) speak('alum-'+_alumId, document.getElementById('p-bio').textContent); });
     document.getElementById('photo-wrap').addEventListener('click', function(e){ e.stopPropagation(); showPhoto(_pi+1); });
     var ovEl = document.getElementById('overlay');
     if (ovEl) ovEl.addEventListener('click', function(e){ if(e.target===ovEl) closeAlum(); });

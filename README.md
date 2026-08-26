@@ -119,3 +119,11 @@ zhongying120-ar/
 - `#scene-container` 必须 `position:fixed; width/height:100%`：MindAR 用 `a-scene.parentNode` 定摄像头视频与 3D 相机投影尺寸，否则视频只铺半屏。
 - AR 内容 `rotation="0 0 0"` 朝相机（垂直海报，勿用 -90 倒伏）。
 - `mindar-image` 用 `uiLoading: no; uiScanning: no`：遮罩由本页完全自管，`#loading` 在「开始体验」点击后才隐藏（该手势解锁 iOS TTS/视频）。
+
+## 语音（通用方案，微信内置也能出声）
+
+- **音频优先**：每段介绍已合成 mp3 放 `assets/audio/`（`intro-<卡id>.mp3` + `alum-<校友id>.mp3`），AR 里用 HTML5 `<audio>` 播放。微信等内置 webview 虽屏蔽 `window.speechSynthesis`，但支持 `<audio>`，故**照样能播**。
+- **兜底**：缺失音频或自动播放被拦截时，回退 Web Speech API（`zh-CN`，真浏览器可用）。
+- **改造**：`tools/gen-audio.py` 用 `edge-tts`（微软在线语音，免费无 key，直出 mp3）从 `index.html` 的 `intro`/`bio` 文案重新合成。改文案后重跑：
+  `python tools/gen-audio.py`
+- 关键经验：微信无 `speechSynthesis`；「开始体验」手势会调用一次静音播放松弛来解锁 `<audio>`。
