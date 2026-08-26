@@ -321,7 +321,7 @@
     var _wanders = [];
     AFRAME.registerComponent('wander', {
       schema: {
-        speed: { type: 'number', default: 0.0005 },
+        speed: { type: 'number', default: 0.0010 },
         r:     { type: 'number', default: 0.13 },  // 碰撞半径
         enterDelay: { type: 'number', default: 0 },   // 入场：该颗延迟 ms（逐颗升起用）
         enterDepth: { type: 'number', default: 0.5 }  // 入场：从卡面深处往镜头方向飞行的距离（米），从远及近
@@ -347,7 +347,7 @@
         this.startZ = this.homeZ - this.data.enterDepth;  // 起点更深(远离镜头)，沿 z 朝镜头飞行 = 从远及近
         this.me.position.set(this.homeX, this.homeY, this.startZ);
         this.me.scale.set(0.05, 0.05, 1);                 // 起点极小，飞近后放大
-        this.enterDur = 1600;
+        this.enterDur = 2200;                             // 升起/飞来更慢一些
       },
       tick: function () {
         var p = this.me.position;
@@ -615,7 +615,7 @@
     function starHtml(c){
       return ALUMNI.map(function(a, i){
         var s = STARS[i];
-        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0005; r: 0.13; enterDelay: '+(i*260)+'">'
+        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0010; r: 0.13; enterDelay: '+(i*300)+'">'
           + '<a-entity star="size: 0.24; color: #f5c542" '
             + 'animation="property: scale; from: 1 1 1; to: 1.18 1.18 1; dir: alternate; loop: true; dur: '+(1400+i*120)+'; easing: easeInOutQuad"></a-entity>'
           + '<a-entity cjktext="value: '+a.name+'; color: #f5e6c8; width: 0.24; outline: #3a2415; outlineWidth: 7" position="0 -0.14 0.002"></a-entity>'
@@ -696,9 +696,10 @@
       __log('AR就绪 arReady', 'ok');
       startBtn.disabled = false;
       startBtn.textContent = '开始体验';
-      // 已就绪、显示"开始体验"，加载图标直接消失（它只在真正加载时出现）
+      // 已就绪、显示"开始体验"，加载图标消除显示，但要保留它占的位置（visibility:hidden 而非 display:none），
+      // 否则下方"开始体验"按钮和标题的位置会整体上移
       var sp = document.getElementById('loading').querySelector('.spinner');
-      if (sp) sp.style.display = 'none';
+      if (sp) sp.style.visibility = 'hidden';
     });
     scene.addEventListener('arError', function(e){
       var err = (e.detail && e.detail.error) || '';
