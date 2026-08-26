@@ -321,7 +321,7 @@
     var _wanders = [];
     AFRAME.registerComponent('wander', {
       schema: {
-        speed: { type: 'number', default: 0.0026 },
+        speed: { type: 'number', default: 0.0018 },
         r:     { type: 'number', default: 0.13 },  // 碰撞半径
         enterDelay: { type: 'number', default: 0 },   // 入场：该颗延迟 ms（逐颗升起用）
         enterDepth: { type: 'number', default: 0.5 }  // 入场：从卡面深处往镜头方向飞行的距离（米），从远及近
@@ -477,6 +477,7 @@
     function openAlum(i){
       var a=ALUMNI[i]; if(!a) return;
       if(!_ov) _ov=document.getElementById('overlay');
+      stopAuto();   // 立刻停掉上一个校友的自动轮播，避免它在预载间隙触发、把上一位照片再亮出来
       document.getElementById('p-num').textContent='No. '+String(i+1).padStart(2,'0')+' / '+ALUMNI.length;
       document.getElementById('p-name').textContent=a.name;
       document.getElementById('p-title').textContent=a.title;
@@ -614,7 +615,7 @@
     function starHtml(c){
       return ALUMNI.map(function(a, i){
         var s = STARS[i];
-        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0026; r: 0.13; enterDelay: '+(i*260)+'">'
+        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0018; r: 0.13; enterDelay: '+(i*260)+'">'
           + '<a-entity star="size: 0.24; color: #f5c542" '
             + 'animation="property: scale; from: 1 1 1; to: 1.18 1.18 1; dir: alternate; loop: true; dur: '+(1400+i*120)+'; easing: easeInOutQuad"></a-entity>'
           + '<a-entity cjktext="value: '+a.name+'; color: #f5e6c8; width: 0.24; outline: #3a2415; outlineWidth: 7" position="0 -0.14 0.002"></a-entity>'
