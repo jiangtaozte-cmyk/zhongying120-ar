@@ -97,17 +97,26 @@
       }
       console.log('[AR] ' + msg);
     }
+    // 日志面板可开可关，避免遮挡操作
+    var debugOpen = false;
+    function toggleDebug(){
+      debugOpen = !debugOpen;
+      var d = document.getElementById('debug');
+      var b = document.getElementById('show-debug');
+      if (d) d.style.display = debugOpen ? 'block' : 'none';
+      if (b) b.textContent = debugOpen ? '收起日志' : '显示日志';
+    }
   </script>
-  <!-- 典雅宋体（jsDelivr + fastly 备用；按 unicode-range 分批下载，仅取用到的字形） -->
+  <!-- 典雅楷书（马善政楷体 Ma Shan Zheng）+ 宋体兜底；jsDelivr + fastly 备用，按 unicode-range 分批下载 -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin>
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/ma-shan-zheng@5/400.css" rel="stylesheet" onerror="this.href='https://fastly.jsdelivr.net/npm/@fontsource/ma-shan-zheng@5/400.css'">
   <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/400.css" rel="stylesheet" onerror="this.href='https://fastly.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/400.css'">
   <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/700.css" rel="stylesheet" onerror="this.href='https://fastly.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/700.css'">
-  <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/900.css" rel="stylesheet" onerror="this.href='https://fastly.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/900.css'">
 </head>
 <body>
 
-  <button id="show-debug" onclick="document.getElementById('debug').style.display='block'">显示日志</button>
+  <button id="show-debug" onclick="toggleDebug()">显示日志</button>
   <div id="debug"></div>
 
   <div id="loading">
@@ -216,7 +225,7 @@
         color:  { type: 'string', default: '#2c1810' },
         width:  { type: 'number', default: 1.0 },   // AR 世界宽度（米）
         wrap:   { type: 'number', default: 0 },      // 每行最大字符数，0=不换行
-        weight: { type: 'number', default: 700 },
+        weight: { type: 'number', default: 400 },   // 楷体/书法字形仅 400，默认不再粗体
         pad:    { type: 'number', default: 40 }
       },
       update: function () {
@@ -235,8 +244,8 @@
           } else { lines.push(raw[r]); }
         }
         if (!lines.length) lines = [''];
-        // 优先 webfont 典雅宋体(Noto Serif SC)，其次系统宋/楷体，末位回退到通用 serif（中文系统多为宋体）
-        var fam = '"Noto Serif SC","Songti SC","STSong","NSimSun","SimSun","Noto Serif CJK SC","KaiTi","STKaiti","FangSong","Microsoft YaHei","PingFang SC",serif';
+        // 优先 webfont 楷书(马善政楷体 Ma Shan Zheng)，其次系统楷体，再宋体，末位通用 serif
+        var fam = '"Ma Shan Zheng","Kaiti SC","STKaiti","KaiTi","楷体","BiauKai","DFKai-SB","Noto Serif SC","Songti SC","SimSun",serif';
         var fs = 200;
         var c = document.createElement('canvas'), ctx = c.getContext('2d');
         ctx.font = d.weight + ' ' + fs + 'px ' + fam;
@@ -464,6 +473,7 @@
       setTimeout(pickZhVoice, 3500);
     }
     function speak(text){
+      __log('TTS调用 ss=' + !!window.speechSynthesis + ' primed=' + speechPrimed + ' len=' + (text ? String(text).length : -1), 'ok');
       if (!window.speechSynthesis || !speechPrimed || !text) return;
       try {
         speechSynthesis.cancel();
@@ -479,7 +489,7 @@
     function primeSpeech(){
       if (speechPrimed) return;
       speechPrimed = true;
-      if (window.speechSynthesis) { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }
+      try { if (window.speechSynthesis) { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {}
     }
 
     // ---- 入口按钮（同时是 iOS TTS 的解锁手势）----
@@ -551,7 +561,7 @@
         + '<a-entity light="type: directional; color: #f5c542; intensity: 0.9" position="2 3 2"></a-entity>'
         // 不铺卡面底：透明背景，AR 内容直接浮在真实纪念卡上方
         // 标题/年代（A-Frame a-text 无中文字形，改用 canvas 纹理 cjktext；上下分开+收窄避免重叠）
-        + '<a-entity cjktext="value: ' + c.title + '; color: #8b1a1a; width: 0.5; weight: 900" position="0 0.70 0.084"></a-entity>'
+        + '<a-entity cjktext="value: ' + c.title + '; color: #8b1a1a; width: 0.5" position="0 0.70 0.084"></a-entity>'
         + '<a-entity cjktext="value: ' + c.era + '; color: #2c5f3f; width: 0.32" position="0 0.50 0.084"></a-entity>';
       if (isStar) {
         h += starHtml(c)
@@ -593,7 +603,7 @@
         if (++attempts < 8) setTimeout(pump, 800);
       })();
       if (document.fonts && document.fonts.load) {
-        ['400 200px "Noto Serif SC"', '700 200px "Noto Serif SC"', '900 200px "Noto Serif SC"'].forEach(function(spec){
+        ['400 200px "Ma Shan Zheng"', '400 200px "Kaiti SC"', '400 200px "Noto Serif SC"', '700 200px "Noto Serif SC"'].forEach(function(spec){
           try { document.fonts.load(spec).then(redrawCJK); } catch (e) {}
         });
         if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', redrawCJK);
