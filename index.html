@@ -726,7 +726,8 @@
       if (c && c.type === 'starwall' && !starsEntered[id]){
         starsEntered[id] = true;
         var root = document.getElementById('card-' + id);
-        if (root) root.querySelectorAll('wander').forEach(function(el){
+        // wander 是 a-entity 上的属性而非标签，须用属性选择器 [wander] 才会选中这些星
+        if (root) root.querySelectorAll('[wander]').forEach(function(el){
           var w = el.components.wander; if (w && w.enter) w.enter();
         });
       }
