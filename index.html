@@ -575,6 +575,7 @@
       __log('用户已开始体验', 'ok');
       userStarted = true;                               // 遮罩消失后才能播入场（否则挡在遮罩后）
       maybeEnterStars(lastFoundCard);
+      maybeIntro(lastFoundCard);
     });
 
     // ---- 视频媒体取用 + 静音解锁（无声视频 muted 后可免手势自动播放）----
@@ -719,6 +720,7 @@
     // 银杏叶（按卡惰性生成，仅首次识别时）
     var leavesSpawned = {};
     var starsEntered = {};
+    var introPlayed = {};
     // 入场只在"用户已开始体验(遮罩消失)"且"识别到星墙卡"都满足后才播，否则会挡在 #loading 遮罩后看不到
     var userStarted = false, lastFoundCard = '';
     function maybeEnterStars(id){
@@ -734,6 +736,14 @@
         var w = el.components.wander; if (w && w.enter){ w.enter(); entered++; }
       });
       __log('入场动画: ' + entered + ' 颗星升起', entered ? 'ok' : 'fail');
+    }
+    // 开场语音：首次加载时卡片可能在"点开始体验"之前就被识别到，而那时 speechPrimed 还是 false，
+    // 导致 intro 被跳过；点开始体验后若已有识别到的卡，则此时补播。同一识别周期只播一次，移开卡片可重播。
+    function maybeIntro(id){
+      if (!speechPrimed) return;                       // 音频尚未解锁（首载时卡先于按钮被识别）
+      if (!id || introPlayed[id] || !cardsById[id]) return;
+      introPlayed[id] = true;
+      speak('intro-' + id, cardsById[id].intro);
     }
     function spawnLeaves(id){
       if (leavesSpawned[id]) return; leavesSpawned[id] = true;
@@ -761,10 +771,7 @@
       setTimeout(function(){ var ff = document.getElementById('found'); if (ff) ff.style.display = 'none'; }, 2500);
       spawnLeaves(id);
       maybeEnterStars(id);
-      if (c) {
-        if (speechPrimed) speak('intro-' + c.id, c.intro);
-        if (c.hasVideo) { var m = getVideoMedia(id); if (m) { try { var p = m.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {} } }
-      }
+      maybeIntro(id);
     });
     scene.addEventListener('targetLost', function(e){
       var id = e.target.getAttribute('data-card-id') || '';
@@ -773,6 +780,8 @@
       var f = document.getElementById('found'); if (f) f.style.display = 'none';
       // 允许再次识别到卡时重新播放星星入场动画（移开再移回即可重看）
       if (starsEntered[id]) starsEntered[id] = false;
+      // 同理，开场语音也可重播（移开再移回）
+      if (introPlayed[id]) introPlayed[id] = false;
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       stopCurAudio();
       var c = cardsById[id];
