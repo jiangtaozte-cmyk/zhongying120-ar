@@ -289,9 +289,9 @@
         var cx = 128, cy = 128, R = 118, r = 50;
         // 深色软晕（画在星星之下）：米色卡面上金字靠"影"而非"光"来托起、显分离
         // 在星星轮廓附近形成一圈暗，向外淡出，让金色从米色卡面"浮起"
-        var glow = ctx.createRadialGradient(cx, cy, R * 0.55, cx, cy, R + 34);
+        var glow = ctx.createRadialGradient(cx, cy, R * 0.62, cx, cy, R + 22);
         glow.addColorStop(0, 'rgba(44,24,16,0)');
-        glow.addColorStop(0.5, 'rgba(44,24,16,0.55)');
+        glow.addColorStop(0.5, 'rgba(44,24,16,0.38)');
         glow.addColorStop(1, 'rgba(44,24,16,0)');
         ctx.fillStyle = glow; ctx.fillRect(0, 0, 256, 256);
         // 五角星（上顶点朝上）
@@ -320,10 +320,13 @@
     var _wanders = [];
     AFRAME.registerComponent('wander', {
       schema: {
-        speed: { type: 'number', default: 0.0042 },
-        r:     { type: 'number', default: 0.13 }   // 碰撞半径
+        speed: { type: 'number', default: 0.0026 },
+        r:     { type: 'number', default: 0.13 },  // 碰撞半径
+        enterDelay: { type: 'number', default: 0 },   // 入场：该颗延迟 ms（逐颗升起用）
+        enterRise:  { type: 'number', default: 1.0 }  // 入场：从卡面下方多高处升起（米）
       },
       init: function () {
+        this.entering = false;                     // 入场升起开关（识别到卡由 enter() 触发）
         this.minX = -0.48; this.maxX = 0.48;       // 避开标题/年代/提示占位
         this.minY = -0.42; this.maxY = 0.42;
         var s = this.data.speed;
@@ -334,8 +337,25 @@
         this.me = this.el.object3D;
         _wanders.push(this);
       },
+      enter: function () {
+        this.entering = true;
+        this.enterT0 = performance.now();
+        this.homeY = this.me.position.y;                  // 目标高度（来自 STARS）
+        this.startY = this.homeY - this.data.enterRise;   // 先沉到卡面之下
+        this.me.position.y = this.startY;
+        this.enterDur = 900;
+      },
       tick: function () {
         var p = this.me.position;
+        // 入场升起：未到该颗延迟时刻停在下方；用 easeOutCubic 逐颗升到原位，升完再接回漂移
+        if (this.entering){
+          var t = (performance.now() - this.enterT0 - this.data.enterDelay) / this.enterDur;
+          if (t < 0) return;                          // 未到该颗，停在卡面下方
+          if (t >= 1){ t = 1; this.entering = false; }
+          t = 1 - Math.pow(1 - t, 3);                 // easeOutCubic
+          p.y = this.startY + (this.homeY - this.startY) * t;
+          if (this.entering) return;
+        }
         // 撞边反弹
         if (p.x < this.minX){ p.x = this.minX; this.vx = Math.abs(this.vx); }
         else if (p.x > this.maxX){ p.x = this.maxX; this.vx = -Math.abs(this.vx); }
@@ -442,6 +462,7 @@
       var c=document.getElementById('p-count');
       if(_photos.length>1){ c.style.display='block'; c.textContent=(_pi+1)+' / '+_photos.length; }
       else c.style.display='none';
+      img.style.visibility='visible';   // 照片就位后再亮起来（预载/轮播均在这里恢复可见）
     }
     function startAuto(){ stopAuto(); if(_photos.length>1) _timer=setInterval(function(){ showPhoto(_pi+1); },4000); }
     function stopAuto(){ if(_timer){ clearInterval(_timer); _timer=null; } }
@@ -452,9 +473,10 @@
       document.getElementById('p-name').textContent=a.name;
       document.getElementById('p-title').textContent=a.title;
       document.getElementById('p-bio').textContent=a.bio;
-      // 立即切占位图，避免显示上一位校友的照片；并用 token 丢弃过期加载结果
+      // 立即切占位图 + 隐藏图片元素，避免显示上一位校友的旧位图；并用 token 丢弃过期加载结果
       var img=document.getElementById('p-photo');
       img.onerror=function(){ img.onerror=null; img.src=SIL; };
+      img.style.visibility='hidden';   // 先藏：换 src 是异步解码，旧位图会残留一两个帧，先隐藏保证不闪旧图
       img.src=SIL;
       var c=document.getElementById('p-count'); if(c) c.style.display='none';
       _ov.classList.add('show');
@@ -462,7 +484,10 @@
       collectPhotos(a.id).then(function(urls){
         if(myReq!==_req) return;             // 已切换他人，丢弃过期结果
         _photos=urls.length?urls:[SIL];
-        showPhoto(0); startAuto();
+        _pi=0;                               // 先预载第一张，解码完成再显示，避免旧图闪现
+        var first=_photos[0], im=new Image();
+        im.onload=im.onerror=function(){ if(myReq!==_req) return; showPhoto(0); startAuto(); };
+        im.src=first;
       });
       primeSpeech(); _alumId = a.id; speak('alum-' + a.id, a.bio);
       __log('查看校友: '+a.name,'ok');
@@ -579,7 +604,7 @@
     function starHtml(c){
       return ALUMNI.map(function(a, i){
         var s = STARS[i];
-        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0042; r: 0.13">'
+        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0026; r: 0.13; enterDelay: '+(i*130)+'">'
           + '<a-entity star="size: 0.24; color: #f5c542" '
             + 'animation="property: scale; from: 1 1 1; to: 1.18 1.18 1; dir: alternate; loop: true; dur: '+(1400+i*120)+'; easing: easeInOutQuad"></a-entity>'
           + '<a-entity cjktext="value: '+a.name+'; color: #f5e6c8; width: 0.24; outline: #3a2415; outlineWidth: 7" position="0 -0.14 0.002"></a-entity>'
@@ -673,6 +698,7 @@
 
     // 银杏叶（按卡惰性生成，仅首次识别时）
     var leavesSpawned = {};
+    var starsEntered = {};
     function spawnLeaves(id){
       if (leavesSpawned[id]) return; leavesSpawned[id] = true;
       var container = document.getElementById('leaves-' + id); if (!container) return;
@@ -697,6 +723,13 @@
       var sc = document.getElementById('scanning'); if (sc) sc.style.display = 'none';
       setTimeout(function(){ var ff = document.getElementById('found'); if (ff) ff.style.display = 'none'; }, 2500);
       spawnLeaves(id);
+      if (c && c.type === 'starwall' && !starsEntered[id]){
+        starsEntered[id] = true;
+        var root = document.getElementById('card-' + id);
+        if (root) root.querySelectorAll('wander').forEach(function(el){
+          var w = el.components.wander; if (w && w.enter) w.enter();
+        });
+      }
       if (c) {
         if (speechPrimed) speak('intro-' + c.id, c.intro);
         if (c.hasVideo) { var m = getVideoMedia(id); if (m) { try { var p = m.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {} } }
@@ -752,7 +785,7 @@
       var res = findClickableAt(cx, cy);
       if (!res.el){ __log('拾取: 无命中', 'warn'); return; }
       var canvas = scene.canvas || document.querySelector('#scene-container canvas');
-      var thr = Math.max(58, (canvas ? canvas.getBoundingClientRect().width : 320) * 0.08);
+      var thr = Math.max(64, (canvas ? canvas.getBoundingClientRect().width : 320) * 0.09);
       if (res.d > thr){ __log('拾取: 太远(' + Math.round(res.d) + 'px)', 'warn'); return; }
       var el = res.el;
       var alumId = el.getAttribute('data-alum-id');
