@@ -98,11 +98,12 @@
       console.log('[AR] ' + msg);
     }
   </script>
-  <!-- 典雅宋体（jsDelivr 在国内可访问；按 unicode-range 分批下载，仅取用到的字形） -->
+  <!-- 典雅宋体（jsDelivr + fastly 备用；按 unicode-range 分批下载，仅取用到的字形） -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/400.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/700.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/900.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin>
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/400.css" rel="stylesheet" onerror="this.href='https://fastly.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/400.css'">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/700.css" rel="stylesheet" onerror="this.href='https://fastly.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/700.css'">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/900.css" rel="stylesheet" onerror="this.href='https://fastly.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/900.css'">
 </head>
 <body>
 
@@ -234,8 +235,8 @@
           } else { lines.push(raw[r]); }
         }
         if (!lines.length) lines = [''];
-        // 优先 webfont 典雅宋体(Noto Serif SC)，其次系统宋/楷体，最后常见黑体
-        var fam = '"Noto Serif SC","Songti SC","STSong","NSimSun","SimSun","Noto Serif CJK SC","KaiTi","STKaiti","FangSong","Microsoft YaHei","PingFang SC",sans-serif';
+        // 优先 webfont 典雅宋体(Noto Serif SC)，其次系统宋/楷体，末位回退到通用 serif（中文系统多为宋体）
+        var fam = '"Noto Serif SC","Songti SC","STSong","NSimSun","SimSun","Noto Serif CJK SC","KaiTi","STKaiti","FangSong","Microsoft YaHei","PingFang SC",serif';
         var fs = 200;
         var c = document.createElement('canvas'), ctx = c.getContext('2d');
         ctx.font = d.weight + ' ' + fs + 'px ' + fam;
@@ -293,6 +294,50 @@
           new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
         );
         this.el.setObject3D('mesh', mesh);
+      }
+    });
+
+    // ---- 星群游动：校友星在框内漂浮，撞边与互撞都变向，动感更强 ----
+    var _wanders = [];
+    AFRAME.registerComponent('wander', {
+      schema: {
+        speed: { type: 'number', default: 0.0042 },
+        r:     { type: 'number', default: 0.13 }   // 碰撞半径
+      },
+      init: function () {
+        this.minX = -0.48; this.maxX = 0.48;       // 避开标题/年代/提示占位
+        this.minY = -0.42; this.maxY = 0.42;
+        var s = this.data.speed;
+        var a = Math.random() * Math.PI * 2;
+        var m = s * (0.6 + Math.random() * 0.8);
+        this.vx = Math.cos(a) * m;
+        this.vy = Math.sin(a) * m;
+        this.me = this.el.object3D;
+        _wanders.push(this);
+      },
+      tick: function () {
+        var p = this.me.position;
+        // 撞边反弹
+        if (p.x < this.minX){ p.x = this.minX; this.vx = Math.abs(this.vx); }
+        else if (p.x > this.maxX){ p.x = this.maxX; this.vx = -Math.abs(this.vx); }
+        if (p.y < this.minY){ p.y = this.minY; this.vy = Math.abs(this.vy); }
+        else if (p.y > this.maxY){ p.y = this.maxY; this.vy = -Math.abs(this.vy); }
+        // 两两互撞：星距小于 2r 则沿连线拉开并反射速度，形成"撞后变向"
+        var min = this.data.r * 2;
+        for (var i = 0; i < _wanders.length; i++){
+          if (_wanders[i] === this) continue;
+          var q = _wanders[i].me.position;
+          var dx = p.x - q.x, dy = p.y - q.y;
+          var d2 = dx * dx + dy * dy;
+          if (d2 < min * min && d2 > 1e-8){
+            var d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
+            var overlap = min - d;
+            p.x += nx * overlap * 0.55; p.y += ny * overlap * 0.55;   // 分开
+            var rel = this.vx * nx + this.vy * ny;
+            if (rel < 0){ this.vx -= 2 * rel * nx; this.vy -= 2 * rel * ny; }  // 反射
+          }
+        }
+        p.x += this.vx; p.y += this.vy;
       }
     });
 
@@ -408,18 +453,27 @@
     // ---- TTS（Web Speech API）----
     var speechPrimed = false, zhVoice = null;
     function pickZhVoice(){
-      var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+      var vs = (window.speechSynthesis && speechSynthesis.getVoices) ? speechSynthesis.getVoices() : [];
       zhVoice = vs.find(function(v){ return v.lang === 'zh-CN'; })
              || vs.find(function(v){ return /^zh/i.test(v.lang); })
              || null;
     }
-    if (window.speechSynthesis) { pickZhVoice(); speechSynthesis.onvoiceschanged = pickZhVoice; }
+    if (window.speechSynthesis) {
+      pickZhVoice(); speechSynthesis.onvoiceschanged = pickZhVoice;
+      setTimeout(pickZhVoice, 1200);          // 部分引擎语音就绪较慢，再探一次
+      setTimeout(pickZhVoice, 3500);
+    }
     function speak(text){
       if (!window.speechSynthesis || !speechPrimed || !text) return;
-      speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      u.lang = 'zh-CN'; if (zhVoice) u.voice = zhVoice; u.rate = 0.95;
-      speechSynthesis.speak(u);
+      try {
+        speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN'; u.rate = 0.95; u.pitch = 1;
+        // 仅在 zhVoice 仍属于当前可用引擎时才指定，避免挂到失效 voice 导致无声
+        if (zhVoice) { var vs = speechSynthesis.getVoices() || []; if (vs.indexOf(zhVoice) >= 0) u.voice = zhVoice; }
+        speechSynthesis.speak(u);
+        __log('TTS: ' + text.slice(0, 10) + '…', 'ok');
+      } catch (e) { __log('TTS失败: ' + e.message, 'fail'); }
     }
     // 在用户手势内调用一次空播，解锁 iOS SpeechSynthesis（之后才可程序化 speak）
     function primeSpeech(){
@@ -477,11 +531,11 @@
       }
     }
 
-    // ---- 星光墙（xiaoyou）星座：发光五角星 + 名字（点击整颗星弹生平）----
+    // ---- 星光墙（xiaoyou）：发光五角星 + 名字，整颗星在框内游动并互碰（点击仍弹生平）----
     function starHtml(c){
       return ALUMNI.map(function(a, i){
         var s = STARS[i];
-        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09">'
+        return '<a-entity class="clickable" data-card-id="'+c.id+'" data-alum-id="'+i+'" position="'+s.x+' '+s.y+' 0.09" wander="speed: 0.0042; r: 0.13">'
           + '<a-entity star="size: 0.24; color: #f5c542" '
             + 'animation="property: scale; from: 1 1 1; to: 1.18 1.18 1; dir: alternate; loop: true; dur: '+(1400+i*120)+'; easing: easeInOutQuad"></a-entity>'
           + '<a-entity cjktext="value: '+a.name+'; color: #2c1810; width: 0.22" position="0 -0.14 0.002"></a-entity>'
@@ -495,9 +549,7 @@
       var h = '<a-entity mindar-image-target="targetIndex: ' + (TARGET_INDEX[c.id]||0) + '" data-card-id="' + c.id + '" id="card-' + c.id + '">'
         + '<a-entity light="type: ambient; color: #fff5e6; intensity: 0.85"></a-entity>'
         + '<a-entity light="type: directional; color: #f5c542; intensity: 0.9" position="2 3 2"></a-entity>'
-        // 相框
-        + '<a-plane width="1.24" height="1.72" color="#2c1810" position="0 0 0.08" rotation="0 0 0" material="side: double; transparent: true; opacity: 0.92; shader: flat"></a-plane>'
-        + '<a-plane width="1.16" height="1.64" color="#f5e6c8" position="0 0 0.082" rotation="0 0 0" material="side: double; transparent: true; opacity: 0.97; shader: flat"></a-plane>'
+        // 不铺卡面底：透明背景，AR 内容直接浮在真实纪念卡上方
         // 标题/年代（A-Frame a-text 无中文字形，改用 canvas 纹理 cjktext；上下分开+收窄避免重叠）
         + '<a-entity cjktext="value: ' + c.title + '; color: #8b1a1a; width: 0.5; weight: 900" position="0 0.70 0.084"></a-entity>'
         + '<a-entity cjktext="value: ' + c.era + '; color: #2c5f3f; width: 0.32" position="0 0.50 0.084"></a-entity>';
@@ -535,11 +587,16 @@
       });
     }
     function readySerif(){
-      redrawCJK();
+      var attempts = 0;
+      (function pump(){                       // 持续重绘，直到 webfont 真正就绪
+        redrawCJK();
+        if (++attempts < 8) setTimeout(pump, 800);
+      })();
       if (document.fonts && document.fonts.load) {
-        ['400 200px "Noto Serif SC","Songti SC","SimSun"', '700 200px "Noto Serif SC","Songti SC","SimSun"', '900 200px "Noto Serif SC","Songti SC","SimSun"'].forEach(function(spec){
+        ['400 200px "Noto Serif SC"', '700 200px "Noto Serif SC"', '900 200px "Noto Serif SC"'].forEach(function(spec){
           try { document.fonts.load(spec).then(redrawCJK); } catch (e) {}
         });
+        if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', redrawCJK);
         if (document.fonts.ready) document.fonts.ready.then(redrawCJK);
       }
     }
